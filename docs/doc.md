@@ -15,5 +15,5 @@
 2. $3$维向量，multi-hot,依次对应(photo,video,gif)
 3. $4$维向量，one-hot,依次对应(retweet, quote, reply, toplevel)
 4. $N_L$维向量，one-hot
-5. $1$维向量，实数，$normalize(c)=\frac{log(c+1)}{log(M_{FER}+1)}$
-6. $1$维向量，实数，$normalize(c)=\frac{log(c+1)}{log(M_{FNG}+1)}$
+5. $1$维向量，实数，$normalize(c)=\frac{log(c+1)}{log(M_{FER}\ +1)}$
+6. $1$维向量，实数，$normalize(c)=\frac{log(c+1)}{log(M_{FNG}\ +1)}$
