@@ -28,14 +28,15 @@ def data_count():
 			for line in lines:
 				features = line.split('\x01')
 				language[features[features_to_idx['language']]] = language.get(features[features_to_idx['language']], len(language))
-				for tag in features[features_to_idx['hashtag']].split():
+				for tag in features[features_to_idx['hashtags']].split():
 					hashtag[tag] = hashtag.get(tag, len(hashtag))
-				M_fer = max(M_fer, features[features_to_idx['engaged_with_user_follower_count']])
-				M_fer = max(M_fer, features[features_to_idx['engaging_user_follower_count']])
-				M_fng = max(M_fng, features[features_to_idx['engaged_with_user_following_count']])
-				M_fng = max(M_fng, features[features_to_idx['engaging_user_following_count']])
+				M_fer = max(M_fer, int(features[features_to_idx['engaged_with_user_follower_count']]))
+				M_fer = max(M_fer, int(features[features_to_idx['engaging_user_follower_count']]))
+				M_fng = max(M_fng, int(features[features_to_idx['engaged_with_user_following_count']]))
+				M_fng = max(M_fng, int(features[features_to_idx['engaging_user_following_count']]))
 			print(N)
 	print(len(language))
 	print(len(hashtag))
 	np.savez('statistic.npz', N=N, language=language, M_fer=M_fer, M_fng=M_fng)
 
+data_count()
