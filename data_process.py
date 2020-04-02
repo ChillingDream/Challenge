@@ -6,8 +6,9 @@ import torch
 from pytorch_pretrained_bert import BertModel
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+torch.set_num_threads(8)
 
-all_features = ["text_ tokens", "hashtags", "tweet_id", "present_media", "present_links", "present_domains",
+all_features = ["text_tokens", "hashtags", "tweet_id", "present_media", "present_links", "present_domains",
                  "tweet_type","language", "tweet_timestamp", "engaged_with_user_id", "engaged_with_user_follower_count",
                 "engaged_with_user_following_count", "engaged_with_user_is_verified", "engaged_with_user_account_creation",
                 "engaging_user_id", "engaging_user_follower_count", "engaging_user_following_count", "engaging_user_is_verified",
@@ -44,16 +45,17 @@ def data_count():
 	print(len(hashtag))
 	np.savez('statistic.npz', N=N, language=language, M_fer=M_fer, M_fng=M_fng)
 
-bert = BertModel.from_pretrained('bert-base-multilingual-cased')
+bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
 
 def process(data):
-	statistic = np.load('statistic.npz')
+	statistic = np.load('statistic.npz', allow_pickle=True)
 	all_language = statistic['language'][()]
 
 	tokens = data[features_to_idx['text_tokens']]
-	segments = [1] * len(tokens)
-	tokens = torch.tensor(tokens, device=device)
-	segments = torch.tensor(segments, device=device)
+	tokens = [[int(token) for token in tokens.split()]]
+	segments = [[1] * len(tokens)]
+	tokens = torch.tensor(tokens)
+	segments = torch.tensor(segments)
 	bert.eval()
 	with torch.no_grad():
 		layers, _ = bert(tokens, segments)
@@ -110,8 +112,8 @@ def process(data):
 			bool(features[-4]), bool(features[-3]), bool(features[-2]), bool(features[-1])]
 
 with open(os.path.join(data_path, "training.tsv"), encoding="utf-8") as f:
-	lines = f.readlines(10)
+	lines = f.readlines(1000000)
 	for line in lines:
 		features = line.split('\x01')
-		print(process(features))
+		process(features)
 
