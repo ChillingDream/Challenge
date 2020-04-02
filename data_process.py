@@ -2,6 +2,10 @@ import os
 from itertools import islice
 
 import numpy as np
+import torch
+from pytorch_pretrained_bert import BertModel
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 all_features = ["text_ tokens", "hashtags", "tweet_id", "present_media", "present_links", "present_domains",
                  "tweet_type","language", "tweet_timestamp", "engaged_with_user_id", "engaged_with_user_follower_count",
@@ -11,6 +15,7 @@ all_features = ["text_ tokens", "hashtags", "tweet_id", "present_media", "presen
 features_to_idx = dict(zip(all_features, range(len(all_features))))
 labels_to_idx = {"reply_timestamp": 20, "retweet_timestamp": 21, "retweet_with_comment_timestamp": 22, "like_timestamp": 23};
 data_path = '/home2/swp/data/twitter/'
+#data_path = '../'
 
 def data_count():
 	language = dict()
@@ -39,4 +44,23 @@ def data_count():
 	print(len(hashtag))
 	np.savez('statistic.npz', N=N, language=language, M_fer=M_fer, M_fng=M_fng)
 
-data_count()
+bert = BertModel.from_pretrained('bert-base-multilingual-cased')
+
+def process(data):
+	tokens = data[features_to_idx['text_tokens']]
+	segments = [1] * len(tokens)
+	tokens = torch.tensor(tokens, device=device)
+	segments = torch.tensor(segments, device=device)
+	bert.eval()
+	with torch.no_grad():
+		layers, _ = bert(tokens, segments)
+	sentence_embedding = torch.mean(layers[11], 1)
+
+	return sentence_embedding
+
+with open(os.path.join(data_path, "training.tsv"), encoding="utf-8") as f:
+	lines = f.readlines(10)
+	for line in lines:
+		features = line.split('\x01')
+		print(process(features))
+
