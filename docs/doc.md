@@ -31,12 +31,12 @@
 一个能将一条原始数据转成如上格式的函数
 ~~一个能将一个原始数据文件转化成如上格式文件的函数~~
 
-###小数据
+### 小数据
 * 在服务器lzh/Challenge/data目录下有两组小数据
 * toy_training.tsv/toy_val.tsv 分别有1000条数据用于dubug
 * reduced_training.tsv/reduced_val.tsv 分别有$10^6$和$10^5$条数据用于release(看效果)
 
-###文件和目录解释
+### 文件和目录解释
 * data目录用于存放twitter数据
 * bert-base-multilingual-cased用于存放bert
 * config.py用于parser以及存放所有环境参数和超参数
