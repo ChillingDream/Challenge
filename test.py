@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-import torch
 from sklearn.metrics import precision_recall_curve, auc, log_loss, mean_squared_error
 from torch.utils.data import DataLoader
 
@@ -24,8 +23,7 @@ def calculate_ctr(gt):
 def compute_rce(pred, gt):
 	cross_entropy = log_loss(gt, pred)
 	data_ctr = calculate_ctr(gt)
-	strawman_cross_entropy = 0
-	#strawman_cross_entropy = log_loss(gt, [data_ctr for _ in range(len(gt))])
+	strawman_cross_entropy = log_loss(gt, [data_ctr for _ in range(len(gt))])
 	return (1.0 - cross_entropy/strawman_cross_entropy)*100.0
 
 
