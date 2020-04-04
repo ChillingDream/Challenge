@@ -45,3 +45,6 @@
 * train.py用于训练
 * test.py用于测试
 * 每个模型单独一个文件用模型名字命名（如FM.py)
+
+### <font color=red>Bug</font>
+评估预测结果计算RCE出现nan,原因未知 **TODO**
