@@ -28,8 +28,9 @@ def compute_rce(pred, gt):
 
 
 def test(model):
+	model.eval()
 	print("Loading test data...")
-	test_loader = DataLoader(TwitterDataset(os.path.join(data_path, train_file)),
+	test_loader = DataLoader(TwitterDataset(os.path.join(data_path, test_file)),
 							 batch_size=1000, shuffle=False, num_workers=4)
 	print("Testing...")
 	pred = []

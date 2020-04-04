@@ -3,6 +3,7 @@ from itertools import islice
 
 import numpy as np
 from pytorch_pretrained_bert import BertModel
+from tqdm import tqdm
 
 from config import *
 
@@ -52,12 +53,13 @@ def process(features):
 	tokens = features[features_to_idx['text_tokens']]
 	tokens = [[int(token) for token in tokens.split()]]
 	segments = [[1] * len(tokens)]
-	tokens = torch.tensor(tokens)
-	segments = torch.tensor(segments)
+	tokens = torch.tensor(tokens).to(device)
+	segments = torch.tensor(segments).to(device)
+	bert.to(device)
 	bert.eval()
 	with torch.no_grad():
 		layers, _ = bert(tokens, segments)
-	sentence_embedding = torch.mean(layers[11], 1)[0]
+	sentence_embedding = torch.mean(layers[11], 1)[0].cpu()
 
 	media = torch.tensor([0., 0., 0.])
 	if 'Thoto' in features[features_to_idx['present_media']]:
@@ -108,9 +110,10 @@ def process(features):
 			bool(features[-4]), bool(features[-3]), bool(features[-2]), bool(features[-1])]
 
 if __name__ == '__main__':
-	with open(os.path.join(data_path, "training.tsv"), encoding="utf-8") as f:
+	with open(os.path.join(data_path, "reduced_training.tsv"), encoding="utf-8") as f:
 		lines = f.readlines(1000000)
-		for line in lines:
+		print(len(lines))
+		for line in tqdm(lines):
 			features = line.split('\x01')
 			process(features)
 

@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import Dataset
 
 from data_process import process
+from tqdm import tqdm
 
 class TwitterDataset(Dataset):
 
@@ -10,7 +11,7 @@ class TwitterDataset(Dataset):
 		self.Y = []
 		with open(path, encoding="utf-8") as file:
 			lines = file.readlines()
-			for line in lines:
+			for line in tqdm(lines):
 				entry = process(line.split('\x01'))
 				self.X.append(torch.cat(entry[:-4]).float())
 				self.Y.append(torch.tensor(entry[-4:]))
