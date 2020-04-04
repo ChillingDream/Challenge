@@ -4,7 +4,7 @@ from torch import nn
 class TorchFM(nn.Module):
 	def __init__(self, n=None, k=None):
 		super().__init__()
-		self.V = nn.Parameter(torch.randn(n, k), requires_grad=True)
+		self.V = nn.Parameter((torch.rand((n, k)) * 2 - 1) / k, requires_grad=True)
 		self.layer = nn.Linear(n, 1)
 		self.loss_function = nn.MSELoss()
 

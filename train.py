@@ -14,7 +14,7 @@ train_loader = DataLoader(TwitterDataset(os.path.join(data_path, train_file)),
 						batch_size=16, shuffle=True, num_workers=4)
 model = TorchFM(n=851, k=100)
 model.to(device)
-optimizer = optim.Adam(model.parameters(), lr=5e-4)
+optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
 print("Training...")
 for epoch in range(epochs):

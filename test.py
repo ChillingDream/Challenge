@@ -39,6 +39,7 @@ def test(model):
 			gt.extend(y.numpy())
 			x, y = x.to(device), y.to(device)
 			pred.extend(model(x).squeeze().cpu().numpy())
+	pred = np.array(pred, dtype=np.float64)
 	pred = np.clip(pred, a_min=1e-15, a_max=1-1e-15)
 	mse = mean_squared_error(pred, gt)
 	prauc = compute_prauc(pred, gt)
