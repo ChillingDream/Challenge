@@ -17,6 +17,9 @@ labels_to_idx = {"reply_timestamp": 20, "retweet_timestamp": 21, "retweet_with_c
 
 
 def data_count():
+	'''
+	collect the statistic of the full data described in the doc.
+	'''
 	language = dict()
 	hashtag = dict()
 	M_fer = 0
@@ -50,6 +53,12 @@ LM_fer = np.log(statistic['M_fer'] + 1)
 LM_fng = np.log(statistic['M_fng'] + 1)
 
 def process(entries):
+	'''
+	process multiple lines including token embedding computing and average pooling, onehot encoding and numerical
+	normalization.
+	:param entries: the lines to be processed
+	:return: a list of processed line, each item as a list consisting of 15 numpy array described in the doc.
+	'''
 	entries = np.array(entries)
 	tokens = entries[:, features_to_idx['text_tokens']]
 	tokens = [[int(token) for token in line.split()] for line in tokens]
@@ -112,6 +121,10 @@ def process(entries):
 			for i in range(len(entries))]
 
 def raw2npy(file):
+	'''
+	process the raw data and store as a npy file.
+	:param file: the file name without prefix directory
+	'''
 	data = []
 	with open(os.path.join(data_path, file)) as f:
 		lines = f.readlines()
@@ -122,7 +135,8 @@ def raw2npy(file):
 	np.save(os.path.join(data_path, os.path.splitext(file)[0]), data)
 
 if __name__ == '__main__':
-	raw2npy('toy_training.tsv')
+	raw2npy('reduced_training.tsv')
+	raw2npy('reduced_val.tsv')
 	exit(0)
 	with open(os.path.join(data_path, "toy_training.tsv"), encoding="utf-8") as f:
 		lines = f.readlines(100000)

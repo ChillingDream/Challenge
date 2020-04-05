@@ -11,9 +11,9 @@ from data_loader import TwitterDataset
 from test import test
 
 print("Loading training data...")
-train_loader = DataLoader(TwitterDataset(os.path.join(data_path, train_file), False),
+train_loader = DataLoader(TwitterDataset(os.path.join(data_path, train_file)),
 						  batch_size=128, shuffle=True, num_workers=8)
-model = TorchFM(n=851, k=100)
+model = TorchFM(n=851, k=100)  # recommending only change the model here
 model.to(device)
 model.train()
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
