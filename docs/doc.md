@@ -28,8 +28,8 @@
 15. $1$维向量，True or False,表示是否产生retweet_with_comment
 16. $1$维向量，True or False,表示是否产生like
 
-一个能将一条原始数据转成如上格式的函数
-~~一个能将一个原始数据文件转化成如上格式文件的函数~~
+一个能将一条原始数据转成如上格式的函数  
+一个能将一个原始数据文件转化成如上格式文件的函数
 
 ### 小数据
 * 在服务器lzh/Challenge/data目录下有两组小数据
@@ -38,6 +38,8 @@
 
 ### 文件和目录解释
 * data目录用于存放twitter数据
+  * tsv文件为原数据格式
+  * 处理后的数据以npy格式存放
 * bert-base-multilingual-cased用于存放bert
 * config.py用于parser以及存放所有环境参数和超参数
 * data_process.py用于处理数据

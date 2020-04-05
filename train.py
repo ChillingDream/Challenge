@@ -1,4 +1,5 @@
 import os
+import time
 
 import numpy as np
 import torch.optim as optim
@@ -10,8 +11,8 @@ from data_loader import TwitterDataset
 from test import test
 
 print("Loading training data...")
-train_loader = DataLoader(TwitterDataset(os.path.join(data_path, train_file)),
-						batch_size=128, shuffle=True, num_workers=8)
+train_loader = DataLoader(TwitterDataset(os.path.join(data_path, train_file), False),
+						  batch_size=128, shuffle=True, num_workers=8)
 model = TorchFM(n=851, k=100)
 model.to(device)
 model.train()
@@ -32,4 +33,5 @@ for epoch in range(epochs):
 		losses.append(loss.item())
 	print("Epoch %d finished. mse:%f" % (epoch, np.mean(losses)))
 
+time.sleep(1)
 test(model)

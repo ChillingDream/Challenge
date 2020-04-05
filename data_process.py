@@ -3,6 +3,7 @@ from itertools import islice
 
 import numpy as np
 from pytorch_pretrained_bert import BertModel
+from tqdm import trange
 
 from config import *
 
@@ -22,9 +23,9 @@ def data_count():
 	M_fng = 0
 	N = 0
 	max_lines = 1000000
-	with open(os.path.join(data_path, "training.tsv"), encoding="utf-8") as file:
+	with open(os.path.join(data_path, "training.tsv"), encoding="utf-8") as f:
 		while True:
-			lines = list(islice(file, max_lines))
+			lines = list(islice(f, max_lines))
 			if not lines:
 				break
 			N += len(lines)
@@ -69,11 +70,11 @@ def process(entries):
 	bert.eval()
 	with torch.no_grad():
 		layers, _ = bert(tokens, segments, attention_mask)
-	sentence_embedding = (torch.sum(layers[11] * weight_mask.unsqueeze(2), 1)).cpu()
+	sentence_embedding = (torch.sum(layers[11] * weight_mask.unsqueeze(2), 1)).cpu().numpy()
 
 	medias = []
 	for media in entries[:, features_to_idx['present_media']]:
-		medias.append(torch.tensor([0., 0., 0.]))
+		medias.append(np.array([0., 0., 0.]))
 		for i, m in enumerate(['Photo', 'Video', 'Gif']):
 			if m == media:
 				medias[-1][i] = 1
@@ -82,38 +83,51 @@ def process(entries):
 	for tweet_type in entries[:, features_to_idx['tweet_type']]:
 		for i, t in enumerate(['Retweet', 'Quote', 'Reply', 'TopLevel']):
 			if t == tweet_type:
-				tweet_types.append(torch.eye(4)[i])
+				tweet_types.append(np.eye(4)[i])
 				break
 
-	languages = torch.zeros((len(entries), len(all_language)))
+	languages = np.zeros((len(entries), len(all_language)))
 	for i, language in enumerate(entries[:, features_to_idx['language']]):
 		languages[i][all_language[language]] = 1
 
 	fer1 = np.array([[int(x)] for x in entries[:, features_to_idx['engaged_with_user_follower_count']]])
-	normed_fer1 = torch.tensor(np.log(fer1 + 1) / LM_fer).float()
+	normed_fer1 = (np.log(fer1 + 1) / LM_fer).astype(np.float32)
 	fng1 = np.array([[int(x)] for x in entries[:, features_to_idx['engaged_with_user_following_count']]])
-	normed_fng1 = torch.tensor(np.log(fng1 + 1) / LM_fng).float()
+	normed_fng1 = (np.log(fng1 + 1) / LM_fng).astype(np.float32)
 	fer2 = np.array([[int(x)] for x in entries[:, features_to_idx['engaging_user_follower_count']]])
-	normed_fer2 = torch.tensor(np.log(fer2 + 1) / LM_fer).float()
+	normed_fer2 = (np.log(fer2 + 1) / LM_fer).astype(np.float)
 	fng2 = np.array([[int(x)] for x in entries[:, features_to_idx['engaging_user_following_count']]])
-	normed_fng2 = torch.tensor(np.log(fng2 + 1) / LM_fng).float()
+	normed_fng2 = (np.log(fng2 + 1) / LM_fng).astype(np.float)
 
-	engaged_verified = torch.eye(2)[
+	engaged_verified = np.eye(2)[
 		[int(x == 'true') for x in entries[:, features_to_idx['engaged_with_user_is_verified']]]]
-	engaging_verified = torch.eye(2)[
+	engaging_verified = np.eye(2)[
 		[int(x == 'true') for x in entries[:, features_to_idx['engaging_user_is_verified']]]]
-	follow = torch.eye(2)[[int(x == 'true') for x in entries[:, features_to_idx['engagee_follows_engager']]]]
+	follow = np.eye(2)[[int(x == 'true') for x in entries[:, features_to_idx['engagee_follows_engager']]]]
 
 	return [[sentence_embedding[i], medias[i], tweet_types[i], languages[i], normed_fer1[i], normed_fng1[i],
 			 engaged_verified[i],
 			 normed_fer2[i], normed_fng2[i], engaging_verified[i], follow[i],
-			 [bool(entries[i][-4])], [bool(entries[i][-3])], [bool(entries[i][-2])], [bool(entries[i][-1])]]
+			 bool(entries[i][-4]), bool(entries[i][-3]), bool(entries[i][-2]), bool(entries[i][-1])]
 			for i in range(len(entries))]
 
+def raw2npy(file):
+	data = []
+	with open(os.path.join(data_path, file)) as f:
+		lines = f.readlines()
+		lines = [line.split('\x01') for line in lines]
+		stride = 100
+		for i in trange(0, len(lines), stride):
+			data += process(lines[i:i + stride])
+	np.save(os.path.join(data_path, os.path.splitext(file)[0]), data)
+
 if __name__ == '__main__':
+	raw2npy('toy_training.tsv')
+	exit(0)
 	with open(os.path.join(data_path, "toy_training.tsv"), encoding="utf-8") as f:
 		lines = f.readlines(100000)
 		entries = [line.split('\x01') for line in lines]
-		print(len(entries))
-		for line in process(entries):
-			print(line[1:])
+		data = process(entries)
+		np.save('data.npy', data)
+		data = np.load('data.npy', allow_pickle=True)
+		print(data)
