@@ -2,3 +2,5 @@
 .idea
 bert-base-multilingual-cased/
 data
+__pycache__
+*.swp

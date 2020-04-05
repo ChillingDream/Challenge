@@ -1,8 +1,8 @@
 import torch
 from torch.utils.data import Dataset
+from tqdm import trange
 
 from data_process import process
-from tqdm import tqdm
 
 class TwitterDataset(Dataset):
 
@@ -11,10 +11,13 @@ class TwitterDataset(Dataset):
 		self.Y = []
 		with open(path, encoding="utf-8") as file:
 			lines = file.readlines()
-			for line in tqdm(lines):
-				entry = process(line.split('\x01'))
-				self.X.append(torch.cat(entry[:-4]).float())
-				self.Y.append(torch.tensor(entry[-4:]))
+			lines = [line.split('\x01') for line in lines]
+			stride = 100
+			for i in trange(0, len(lines), stride):
+				data = process(lines[i:i + stride])
+				for entry in data:
+					self.X.append(torch.cat(entry[:-4]))
+					self.Y.append(torch.tensor(entry[-4:]))
 
 	def __len__(self):
 		return len(self.Y)
