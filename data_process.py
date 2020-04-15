@@ -1,4 +1,3 @@
-import os
 from itertools import islice
 
 import numpy as np
@@ -14,6 +13,8 @@ all_features = ["text_tokens", "hashtags", "tweet_id", "present_media", "present
                 "enaging_user_account_creation", "engagee_follows_engager"]
 features_to_idx = dict(zip(all_features, range(len(all_features))))
 labels_to_idx = {"reply_timestamp": 20, "retweet_timestamp": 21, "retweet_with_comment_timestamp": 22, "like_timestamp": 23};
+cate_idx = [1, 2, 3, 6, 9, 10]
+cont_idx = [0, 4, 5, 7, 8]
 
 
 def data_count():
@@ -26,7 +27,7 @@ def data_count():
 	M_fng = 0
 	N = 0
 	max_lines = 1000000
-	with open(os.path.join(data_path, "training.tsv"), encoding="utf-8") as f:
+	with open(os.path.join(data_dir, "training.tsv"), encoding="utf-8") as f:
 		while True:
 			lines = list(islice(f, max_lines))
 			if not lines:
@@ -126,19 +127,21 @@ def raw2npy(file):
 	:param file: the file name without prefix directory
 	'''
 	data = []
-	with open(os.path.join(data_path, file)) as f:
+	with open(os.path.join(data_dir, file)) as f:
 		lines = f.readlines()
 		lines = [line.split('\x01') for line in lines]
 		stride = 100
 		for i in trange(0, len(lines), stride):
 			data += process(lines[i:i + stride])
-	np.save(os.path.join(data_path, os.path.splitext(file)[0]), data)
+	np.save(os.path.join(data_dir, os.path.splitext(file)[0]), data)
 
 if __name__ == '__main__':
-	raw2npy('reduced_training.tsv')
-	raw2npy('reduced_val.tsv')
+	raw2npy('toy_training.tsv')
+	raw2npy('toy_val.tsv')
+	#	raw2npy('reduced_training.tsv')
+	#	raw2npy('reduced_val.tsv')
 	exit(0)
-	with open(os.path.join(data_path, "toy_training.tsv"), encoding="utf-8") as f:
+	with open(os.path.join(data_dir, "toy_training.tsv"), encoding="utf-8") as f:
 		lines = f.readlines(100000)
 		entries = [line.split('\x01') for line in lines]
 		data = process(entries)

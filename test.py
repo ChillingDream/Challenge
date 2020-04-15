@@ -1,12 +1,12 @@
-import os
+import time
 
 import numpy as np
 from sklearn.metrics import precision_recall_curve, auc, log_loss, mean_squared_error
 from torch.utils.data import DataLoader
 
-from FM import TorchFM
 from config import *
 from data_loader import TwitterDataset
+from models.wide_deep import WideDeep
 
 def compute_prauc(pred, gt):
 	prec, recall, thresh = precision_recall_curve(gt, pred)
@@ -26,31 +26,43 @@ def compute_rce(pred, gt):
 	strawman_cross_entropy = log_loss(gt, [data_ctr for _ in range(len(gt))])
 	return (1.0 - cross_entropy/strawman_cross_entropy)*100.0
 
-
-def test(model):
+def test(model, dataset=None):
 	model.eval()
-	print("Loading test data...")
-	test_loader = DataLoader(TwitterDataset(os.path.join(data_path, test_file)),
-							 batch_size=1000, shuffle=False, num_workers=4)
-	print("Testing...")
+	if dataset:
+		test_loader = DataLoader(dataset, batch_size=1000, shuffle=False, num_workers=4)
+	else:
+		time.sleep(0.5)
+		print("Loading test data...")
+		time.sleep(0.5)
+		test_loader = DataLoader(TwitterDataset(os.path.join(data_dir, test_file), model.transform),
+								 batch_size=1000, shuffle=False, num_workers=4)
+	if not dataset:
+		time.sleep(0.5)
+		print("Testing...")
+		time.sleep(0.5)
 	pred = []
 	gt = []
 	with torch.no_grad():
 		for x, y in test_loader:
 			gt.extend(y.numpy())
-			x, y = x.to(device), y.to(device)
 			pred.extend(model(x).squeeze().cpu().numpy())
 	pred = np.array(pred, dtype=np.float64)
 	pred = np.clip(pred, a_min=1e-15, a_max=1-1e-15)
 	mse = mean_squared_error(pred, gt)
 	prauc = compute_prauc(pred, gt)
 	rce = compute_rce(pred, gt)
-	print("mse: ", mse)
-	print("prauc: ", prauc)
-	print("rce: ", rce)
+	return mse, prauc, rce
 
 
 if __name__ == '__main__':
-	model = TorchFM(n=851, k=100)
+	model = WideDeep(cont_n=cont_n,
+					 cate_n=cate_n,
+					 emb_length=32,
+					 hidden_units=[128, 64, 32])
+	checkpoint = torch.load(os.path.join(checkpoints_dir, model_name))
+	model.load_state_dict(checkpoint['model_state_dict'])
 	model.to(device)
-	test(model)
+	mse, prauc, rce = test(model)
+	print("mse: ", mse)
+	print("prauc: ", prauc)
+	print("rce: ", rce)

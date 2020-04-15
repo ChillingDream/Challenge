@@ -3,4 +3,6 @@
 bert-base-multilingual-cased/
 data
 __pycache__
+logs
+checkpoints
 *.swp

@@ -1,5 +1,8 @@
+import numpy as np
 import torch
 from torch import nn
+
+from config import device
 
 class TorchFM(nn.Module):
 	def __init__(self, n=None, k=None):
@@ -17,4 +20,8 @@ class TorchFM(nn.Module):
 		return out_inter + out_layer
 
 	def loss(self, logits, labels):
-		return self.loss_function(logits, labels)
+		return self.loss_function(logits, labels.to(device))
+
+	@staticmethod
+	def transform(x):
+		return torch.tensor(np.concatenate(x)).float()
