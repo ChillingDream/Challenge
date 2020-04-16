@@ -29,7 +29,6 @@ time.sleep(0.5)
 iteration = trange(epochs)
 step = 0
 for epoch in iteration:
-	print(epochs)
 	model.train()
 	for data in train_loader:
 		step += 1
