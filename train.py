@@ -29,6 +29,7 @@ time.sleep(0.5)
 iteration = trange(epochs)
 step = 0
 for epoch in iteration:
+	print(epochs)
 	model.train()
 	for data in train_loader:
 		step += 1
@@ -53,8 +54,7 @@ for epoch in iteration:
 	writer.add_scalars('loss/prauc', {'train':train_prauc}, step)
 	writer.add_scalars('loss/rce', {'train':train_rce}, step)
 	iteration.set_description("train loss:%f" % train_ce)
-
-writer.flush()
+	writer.flush()
 ce, prauc, rce = test(model)
 print("ce: ", ce)
 print("prauc: ", prauc)
