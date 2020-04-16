@@ -49,14 +49,14 @@ for epoch in iter:
 					'optimizer_state_dict':optimizer.state_dict()},
 				   os.path.join(checkpoints_dir, model_name))
 	if epoch % 5 == 4:
-		train_mse, train_prauc, train_rce = test(model, train_data)
-		test_mse, test_prauc, test_rce = test(model, test_data)
-		writer.add_scalars('loss/mse', {'train':train_mse, 'val':test_mse}, epoch)
+		train_ce, train_prauc, train_rce = test(model, train_data)
+		test_ce, test_prauc, test_rce = test(model, test_data)
+		writer.add_scalars('loss/ce', {'train':train_ce, 'val':test_ce}, epoch)
 		writer.add_scalars('loss/prauc', {'train':train_prauc, 'val':test_prauc}, epoch)
 		writer.add_scalars('loss/rce', {'train':train_rce, 'val':test_rce}, epoch)
 	else:
-		train_mse = np.mean(losses)
-	iter.set_description("train mse:%f" % train_mse)
+		train_ce = np.mean(losses)
+	iter.set_description("train loss:%f" % train_ce)
 
 writer.flush()
 mse, prauc, rce = test(model)

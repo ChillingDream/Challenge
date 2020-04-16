@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-from sklearn.metrics import precision_recall_curve, auc, log_loss, mean_squared_error
+from sklearn.metrics import precision_recall_curve, auc, log_loss
 from torch.utils.data import DataLoader
 
 from config import *
@@ -48,10 +48,10 @@ def test(model, dataset=None):
 			pred.extend(model(x).squeeze().cpu().numpy())
 	pred = np.array(pred, dtype=np.float64)
 	pred = np.clip(pred, a_min=1e-15, a_max=1-1e-15)
-	mse = mean_squared_error(pred, gt)
+	ce = log_loss(gt, pred)
 	prauc = compute_prauc(pred, gt)
 	rce = compute_rce(pred, gt)
-	return mse, prauc, rce
+	return ce, prauc, rce
 
 
 if __name__ == '__main__':
@@ -62,7 +62,7 @@ if __name__ == '__main__':
 	checkpoint = torch.load(os.path.join(checkpoints_dir, model_name))
 	model.load_state_dict(checkpoint['model_state_dict'])
 	model.to(device)
-	mse, prauc, rce = test(model)
-	print("mse: ", mse)
+	ce, prauc, rce = test(model)
+	print("ce: ", ce)
 	print("prauc: ", prauc)
 	print("rce: ", rce)

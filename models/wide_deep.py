@@ -14,12 +14,12 @@ class WideDeep(nn.Module):
 		layers = []
 		for i in range(len(hidden_units) - 1):
 			layers.append(nn.Linear(hidden_units[i], hidden_units[i + 1]))
-			layers.append(nn.ReLU())
+			layers.append(nn.ReLU(True))
 			if i != len(hidden_units) - 2:
 				layers.append(nn.Dropout(0.5))
 		self.mid_layers = nn.Sequential(*layers)
 		self.last_layer = nn.Linear(hidden_units[-1] + cate_n, 1)
-		self.loss_function = nn.MSELoss()
+		self.loss_function = nn.BCELoss()
 
 	def forward(self, x):
 		cont_x, cate_x = x
