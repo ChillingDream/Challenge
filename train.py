@@ -18,14 +18,14 @@ train_data = TwitterDataset(os.path.join(data_dir, train_file), WideDeep.transfo
 time.sleep(0.5)
 print("Loading validation data...")
 test_data = TwitterDataset(os.path.join(data_dir, test_file), WideDeep.transform)
-train_loader = DataLoader(train_data, batch_size=128, shuffle=True, num_workers=8)
+train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8)
 
 model = WideDeep(cont_n=cont_n,
 				 cate_n=cate_n,
 				 emb_length=32,
 				 hidden_units=[128, 64, 32])  # recommending only change the model here
 model.to(device)
-optimizer = optim.Adam(model.parameters(), lr=1e-4)
+optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
 print("Training...")
 os.system('rm -rf ' + os.path.join(log_dir, '*'))
