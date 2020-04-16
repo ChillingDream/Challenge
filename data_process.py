@@ -15,7 +15,9 @@ features_to_idx = dict(zip(all_features, range(len(all_features))))
 labels_to_idx = {"reply_timestamp": 20, "retweet_timestamp": 21, "retweet_with_comment_timestamp": 22, "like_timestamp": 23};
 cate_idx = [1, 2, 3, 6, 9, 10]
 cont_idx = [0, 4, 5, 7, 8]
-
+field_dims = [768, 3, 4, 66, 1, 1, 2, 1, 1, 2, 2]
+cate_n = sum([field_dims[i] for i in cate_idx])
+cont_n = sum([field_dims[i] for i in cont_idx])
 
 def data_count():
 	'''

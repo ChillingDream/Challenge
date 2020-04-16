@@ -1,6 +1,5 @@
 import time
 
-import numpy as np
 import torch.optim as optim
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
@@ -20,46 +19,43 @@ print("Loading validation data...")
 test_data = TwitterDataset(os.path.join(data_dir, test_file), WideDeep.transform)
 train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8)
 
-model = WideDeep(cont_n=cont_n,
-				 cate_n=cate_n,
-				 emb_length=32,
-				 hidden_units=[128, 64, 32])  # recommending only change the model here
+model = WideDeep(emb_length=32, hidden_units=[128, 64, 32])  # recommending only change the model here
 model.to(device)
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
 print("Training...")
 os.system('rm -rf ' + os.path.join(log_dir, '*'))
 time.sleep(0.5)
-iter = trange(epochs)
-for epoch in iter:
+iteration = trange(epochs)
+step = 0
+for epoch in iteration:
 	model.train()
-	losses = []
-	for i, data in enumerate(train_loader):
+	for data in train_loader:
+		step += 1
 		x, y = data
 		optimizer.zero_grad()
 		logits = model(x).squeeze()
 		loss = model.loss(logits, y)
 		loss.backward()
 		optimizer.step()
+		if step % 10 == 0:
+			test_ce, test_prauc, test_rce = test(model, test_data)
+			writer.add_scalars('loss/ce', {'val':test_ce}, step)
+			writer.add_scalars('loss/prauc', {'val':test_prauc}, step)
+			writer.add_scalars('loss/rce', {'val':test_rce}, step)
 
-		losses.append(loss.item())
-	if epoch % 10 == 9:
-		torch.save({'epoch':epoch,
-					'model_state_dict':model.state_dict(),
-					'optimizer_state_dict':optimizer.state_dict()},
-				   os.path.join(checkpoints_dir, model_name))
-	if epoch % 5 == 4:
-		train_ce, train_prauc, train_rce = test(model, train_data)
-		test_ce, test_prauc, test_rce = test(model, test_data)
-		writer.add_scalars('loss/ce', {'train':train_ce, 'val':test_ce}, epoch)
-		writer.add_scalars('loss/prauc', {'train':train_prauc, 'val':test_prauc}, epoch)
-		writer.add_scalars('loss/rce', {'train':train_rce, 'val':test_rce}, epoch)
-	else:
-		train_ce = np.mean(losses)
-	iter.set_description("train loss:%f" % train_ce)
+	torch.save({'epoch':epoch,
+				'model_state_dict':model.state_dict(),
+				'optimizer_state_dict':optimizer.state_dict()},
+			   os.path.join(checkpoints_dir, model_name))
+	train_ce, train_prauc, train_rce = test(model, train_data)
+	writer.add_scalars('loss/ce', {'train':train_ce}, step)
+	writer.add_scalars('loss/prauc', {'train':train_prauc}, step)
+	writer.add_scalars('loss/rce', {'train':train_rce}, step)
+	iteration.set_description("train loss:%f" % train_ce)
 
 writer.flush()
-mse, prauc, rce = test(model)
-print("mse: ", mse)
+ce, prauc, rce = test(model)
+print("ce: ", ce)
 print("prauc: ", prauc)
 print("rce: ", rce)

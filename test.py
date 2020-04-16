@@ -55,9 +55,7 @@ def test(model, dataset=None):
 
 
 if __name__ == '__main__':
-	model = WideDeep(cont_n=cont_n,
-					 cate_n=cate_n,
-					 emb_length=32,
+	model = WideDeep(emb_length=32,
 					 hidden_units=[128, 64, 32])
 	checkpoint = torch.load(os.path.join(checkpoints_dir, model_name))
 	model.load_state_dict(checkpoint['model_state_dict'])

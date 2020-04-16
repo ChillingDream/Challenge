@@ -3,14 +3,13 @@ import torch
 from torch import nn
 
 from config import device
-from data_process import cate_idx, cont_idx
+from data_process import cate_idx, cont_idx, cont_n, cate_n, field_dims
 
 class WideDeep(nn.Module):
-	def __init__(self, cont_n, cate_n, emb_length, hidden_units):
+	def __init__(self, emb_length, hidden_units):
 		super().__init__()
-		self.embedding = nn.Parameter(torch.FloatTensor(cate_n, emb_length), requires_grad=True)
-		nn.init.normal_(self.embedding, std=1e-2)
-		hidden_units = [cont_n + cate_n * emb_length] + hidden_units
+		self.emb_layers = nn.ModuleList([nn.Linear(field_dims[i], emb_length, bias=False) for i in cate_idx])
+		hidden_units = [cont_n + len(cate_idx) * emb_length] + hidden_units
 		layers = []
 		for i in range(len(hidden_units) - 1):
 			layers.append(nn.Linear(hidden_units[i], hidden_units[i + 1]))
@@ -24,9 +23,9 @@ class WideDeep(nn.Module):
 	def forward(self, x):
 		cont_x, cate_x = x
 		cont_x = cont_x.to(device)
-		cate_x = cate_x.to(device)
-		emb = cate_x.unsqueeze(-1) * self.embedding
-		net = torch.cat([cont_x, emb.view(cont_x.size()[0], -1)], 1)
+		emb = torch.cat([layer(cx.to(device)) for (cx, layer) in zip(cate_x, self.emb_layers)], 1)
+		cate_x = torch.cat(cate_x, 1).to(device)
+		net = torch.cat([cont_x, emb], 1)
 		net = self.mid_layers(net)
 		net = torch.cat([cate_x, net], 1)
 		net = torch.sigmoid(self.last_layer(net))
@@ -37,14 +36,12 @@ class WideDeep(nn.Module):
 
 	@staticmethod
 	def transform(x):
-		cate_x = [x[i] for i in cate_idx]
+		cate_x = [torch.tensor(x[i]).float() for i in cate_idx]
 		cont_x = [x[i] for i in cont_idx]
-		cate_x = torch.tensor(np.concatenate(cate_x)).float()
 		cont_x = torch.tensor(np.concatenate(cont_x)).float()
 		return cont_x, cate_x
 
 if __name__ == '__main__':
-	m = WideDeep(100, 10, 32, [10, 10, 10])
-	print(m.mid_layers)
+	m = WideDeep(32, [10, 10, 10])
 	for name, param in m.named_parameters():
 		print(name, param.size())
