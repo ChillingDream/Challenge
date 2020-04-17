@@ -16,7 +16,7 @@ time.sleep(0.5)
 train_data = TwitterDataset(os.path.join(data_dir, train_file), WideDeep.transform)
 time.sleep(0.5)
 print("Loading validation data...")
-test_data = TwitterDataset(os.path.join(data_dir, test_file), WideDeep.transform)
+test_data = TwitterDataset(os.path.join(data_dir, test_file), WideDeep.transform, val_size)
 train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
 
 model = WideDeep(emb_length=32, hidden_units=[128, 64, 32])  # recommending only change the model here

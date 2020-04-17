@@ -32,6 +32,7 @@ lr = arg.lr
 weight_decay = arg.weight_decay
 drop_rate = arg.dropout
 batch_size = arg.batch
+val_size = arg.val_size
 
 if not os.path.exists(checkpoints_dir):
 	os.makedirs(checkpoints_dir)
