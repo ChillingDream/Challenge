@@ -29,13 +29,13 @@ def compute_rce(pred, gt):
 def test(model, dataset=None):
 	model.eval()
 	if dataset:
-		test_loader = DataLoader(dataset, batch_size=1000, shuffle=False, num_workers=0, pin_memory=True)
+		test_loader = DataLoader(dataset, batch_size=1000, shuffle=False, num_workers=0)
 	else:
 		time.sleep(0.5)
 		print("Loading test data...")
 		time.sleep(0.5)
 		test_loader = DataLoader(TwitterDataset(os.path.join(data_dir, test_file), model.transform),
-								 batch_size=1000, shuffle=False, num_workers=0, pin_memory=True)
+								 batch_size=1000, shuffle=False, num_workers=0)
 	if not dataset:
 		time.sleep(0.5)
 		print("Testing...")

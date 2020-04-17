@@ -15,6 +15,8 @@ parser.add_argument("--weight_decay", default=1e-5, type=float)
 parser.add_argument("--dropout", default=0.5, type=float)
 parser.add_argument("--batch", default=500, type=int)
 parser.add_argument("--data_name", default='toy', type=str)
+parser.add_argument("--load_checkpoint", action='store_true')
+parser.add_argument("--val_size", default=1000, type=int)
 
 arg = parser.parse_args()
 device = torch.device("cpu" if arg.device == "cpu" else "cuda:" + arg.device)
@@ -24,7 +26,7 @@ checkpoints_dir = 'checkpoints/'
 model_name = arg.model_name
 log_dir = os.path.join(arg.log_dir, model_name)
 train_file = arg.data_name + '_training.npy'
-test_file = 'toy_val.npy'
+test_file = arg.data_name + '_val.npy'
 epochs = arg.epoch
 lr = arg.lr
 weight_decay = arg.weight_decay

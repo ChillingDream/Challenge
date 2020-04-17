@@ -5,7 +5,31 @@ import torch
 from torch.utils.data import Dataset
 from tqdm import trange, tqdm
 
+from config import device
 from data_process import process
+
+class DataPrefetcher():
+	def __init__(self, loader):
+		self.loader = loader
+		self.stream = torch.cuda.Stream()
+		self.preload()
+
+	def preload(self):
+		try:
+			self.batch = next(self.loader)
+		except StopIteration:
+			self.batch = None
+			return
+		with torch.cuda.stream(self.stream):
+			for k in self.batch:
+				if k != 'meta':
+					self.batch[k] = self.batch[k].to(device=device, non_blocking=True)
+
+	def next(self):
+		torch.cuda.current_stream().wait_stream(self.stream)
+		batch = self.batch
+		self.preload()
+		return batch
 
 class TwitterDataset(Dataset):
 

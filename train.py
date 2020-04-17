@@ -17,17 +17,23 @@ train_data = TwitterDataset(os.path.join(data_dir, train_file), WideDeep.transfo
 time.sleep(0.5)
 print("Loading validation data...")
 test_data = TwitterDataset(os.path.join(data_dir, test_file), WideDeep.transform)
-train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
+train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
 
 model = WideDeep(emb_length=32, hidden_units=[128, 64, 32])  # recommending only change the model here
 model.to(device)
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+step = 0
+if arg.load_checkpoint:
+	checkpoint = torch.load(os.path.join(checkpoints_dir, model_name))
+	model.load_state_dict(checkpoint['model_state_dict'])
+	optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+	step = checkpoint['step']
+	print("Checkpoint loaded.")
 
 print("Training...")
 os.system('rm -rf ' + os.path.join(log_dir, '*'))
 time.sleep(0.5)
 iteration = trange(epochs)
-step = 0
 for epoch in iteration:
 	model.train()
 	for data in train_loader:
@@ -47,7 +53,8 @@ for epoch in iteration:
 
 	torch.save({'epoch':epoch,
 				'model_state_dict':model.state_dict(),
-				'optimizer_state_dict':optimizer.state_dict()},
+				'optimizer_state_dict':optimizer.state_dict(),
+				'step':step},
 			   os.path.join(checkpoints_dir, model_name))
 	train_ce, train_prauc, train_rce = test(model, train_data)
 	writer.add_scalars('loss/ce', {'train':train_ce}, step)
