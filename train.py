@@ -17,7 +17,7 @@ train_data = TwitterDataset(os.path.join(data_dir, train_file), WideDeep.transfo
 time.sleep(0.5)
 print("Loading validation data...")
 test_data = TwitterDataset(os.path.join(data_dir, test_file), WideDeep.transform)
-train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8)
+train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
 
 model = WideDeep(emb_length=32, hidden_units=[128, 64, 32])  # recommending only change the model here
 model.to(device)
@@ -38,7 +38,8 @@ for epoch in iteration:
 		loss = model.loss(logits, y)
 		loss.backward()
 		optimizer.step()
-		if step % 10 == 0:
+
+		if step % 20 == 0:
 			test_ce, test_prauc, test_rce = test(model, test_data)
 			writer.add_scalars('loss/ce', {'val':test_ce}, step)
 			writer.add_scalars('loss/prauc', {'val':test_prauc}, step)
@@ -54,6 +55,7 @@ for epoch in iteration:
 	writer.add_scalars('loss/rce', {'train':train_rce}, step)
 	iteration.set_description("train loss:%f" % train_ce)
 	writer.flush()
+
 ce, prauc, rce = test(model)
 print("ce: ", ce)
 print("prauc: ", prauc)
