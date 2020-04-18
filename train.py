@@ -10,6 +10,9 @@ from data_loader import TwitterDataset
 from models.wide_deep import WideDeep
 from test import test
 
+def calc_score(prauc, rce):
+	return prauc * 100 + rce
+
 writer = SummaryWriter(log_dir=log_dir, flush_secs=30)
 print("Loading training data...")
 time.sleep(0.5)
@@ -23,11 +26,15 @@ model = WideDeep(emb_length=32, hidden_units=[128, 64, 32])  # recommending only
 model.to(device)
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 step = 0
-if arg.load_checkpoint:
-	checkpoint = torch.load(os.path.join(checkpoints_dir, model_name))
+max_score = (0, -1e10, 0)
+
+if load_checkpoint:
+	checkpoint = torch.load(
+		os.path.join(checkpoints_dir, model_name + ('best.pt' if load_checkpoint == 'best' else 'latest.pt')))
 	model.load_state_dict(checkpoint['model_state_dict'])
 	optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 	step = checkpoint['step']
+	max_score = checkpoint['max_score']
 	print("Checkpoint loaded.")
 
 print("Training...")
@@ -45,17 +52,24 @@ for epoch in iteration:
 		loss.backward()
 		optimizer.step()
 
-		if step % 20 == 0:
+		if step % 2 == 0:
 			test_ce, test_prauc, test_rce = test(model, test_data)
 			writer.add_scalars('loss/ce', {'val':test_ce}, step)
 			writer.add_scalars('loss/prauc', {'val':test_prauc}, step)
 			writer.add_scalars('loss/rce', {'val':test_rce}, step)
+			if calc_score(test_prauc, test_rce) > calc_score(max_score[0], max_score[1]):
+				max_score = (test_prauc, test_rce, step)
+				torch.save({'model_state_dict':model.state_dict(),
+							'optimizer_state_dict':optimizer.state_dict(),
+							'step':step,
+							'max_score':max_score},
+						   os.path.join(checkpoints_dir, model_name + 'best.pt'))
 
-	torch.save({'epoch':epoch,
-				'model_state_dict':model.state_dict(),
+	torch.save({'model_state_dict':model.state_dict(),
 				'optimizer_state_dict':optimizer.state_dict(),
-				'step':step},
-			   os.path.join(checkpoints_dir, model_name))
+				'step':step,
+				'max_score':max_score},
+			   os.path.join(checkpoints_dir, model_name + 'latest.pt'))
 	train_ce, train_prauc, train_rce = test(model, train_data)
 	writer.add_scalars('loss/ce', {'train':train_ce}, step)
 	writer.add_scalars('loss/prauc', {'train':train_prauc}, step)
@@ -67,3 +81,6 @@ ce, prauc, rce = test(model)
 print("ce: ", ce)
 print("prauc: ", prauc)
 print("rce: ", rce)
+print("The best performance is achieved at step %d" % max_score[2])
+print("prauc: ", max_score[0])
+print("rce: ", max_score[1])
