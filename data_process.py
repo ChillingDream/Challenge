@@ -50,12 +50,13 @@ def data_count():
 	np.savez('statistic.npz', N=N, language=language, M_fer=M_fer, M_fng=M_fng)
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
+word_embeddings = bert.embeddings.word_embeddings.weight.data
 statistic = np.load('statistic.npz', allow_pickle=True)
 all_language = statistic['language'][()]
 LM_fer = np.log(statistic['M_fer'] + 1)
 LM_fng = np.log(statistic['M_fng'] + 1)
 
-def process(entries):
+def process(entries, token_embedding_level='sentence'):
 	'''
 	process multiple lines including token embedding computing and average pooling, onehot encoding and numerical
 	normalization.
@@ -65,24 +66,31 @@ def process(entries):
 	entries = np.array(entries)
 	tokens = entries[:, features_to_idx['text_tokens']]
 	tokens = [[int(token) for token in line.split()] for line in tokens]
-	max_length = max([len(line) for line in tokens])
-	attention_mask = []
-	weight_mask = []
-	for line in tokens:
-		l = len(line)
-		line += [0] * (max_length - l)
-		attention_mask.append([1] * l + [0] * (max_length - l))
-		weight_mask.append(np.array(attention_mask[-1]) / l)
+	if token_embedding_level == 'sentence':
+		max_length = max([len(line) for line in tokens])
+		attention_mask = []
+		weight_mask = []
+		for line in tokens:
+			l = len(line)
+			line += [0] * (max_length - l)
+			attention_mask.append([1] * l + [0] * (max_length - l))
+			weight_mask.append(np.array(attention_mask[-1]) / l)
 
-	tokens = torch.tensor(tokens).to(device)
-	segments = torch.ones_like(tokens).to(device)
-	attention_mask = torch.tensor(attention_mask).to(device)
-	weight_mask = torch.tensor(weight_mask, dtype=torch.float32).to(device)
-	bert.to(device)
-	bert.eval()
-	with torch.no_grad():
-		layers, _ = bert(tokens, segments, attention_mask)
-	sentence_embedding = (torch.sum(layers[11] * weight_mask.unsqueeze(2), 1)).cpu().numpy()
+		tokens = torch.tensor(tokens).to(device)
+		segments = torch.ones_like(tokens).to(device)
+		attention_mask = torch.tensor(attention_mask).to(device)
+		weight_mask = torch.tensor(weight_mask, dtype=torch.float32).to(device)
+		bert.to(device)
+		bert.eval()
+		with torch.no_grad():
+			layers, _ = bert(tokens, segments, attention_mask)
+		sentence_embedding = (torch.sum(layers[11] * weight_mask.unsqueeze(2), 1)).cpu().numpy()
+	elif token_embedding_level == 'word':
+		sentence_embedding = [torch.mean(word_embeddings[line], 0) for line in tokens]
+	elif token_embedding_level == 'None':
+		sentence_embedding = tokens
+	else:
+		raise Exception('wrong token embedding level')
 
 	medias = []
 	for media in entries[:, features_to_idx['present_media']]:
@@ -138,15 +146,15 @@ def raw2npy(file):
 	np.save(os.path.join(data_dir, os.path.splitext(file)[0]), data)
 
 if __name__ == '__main__':
-	raw2npy('toy_training.tsv')
-	raw2npy('toy_val.tsv')
+	# raw2npy('toy_training.tsv')
+	# raw2npy('toy_val.tsv')
 	#	raw2npy('reduced_training.tsv')
 	#	raw2npy('reduced_val.tsv')
-	exit(0)
 	with open(os.path.join(data_dir, "toy_training.tsv"), encoding="utf-8") as f:
 		lines = f.readlines(100000)
 		entries = [line.split('\x01') for line in lines]
-		data = process(entries)
-		np.save('data.npy', data)
-		data = np.load('data.npy', allow_pickle=True)
-		print(data)
+		data = process(entries, None)
+		print(data[0][0])
+# np.save('data.npy', data)
+# data = np.load('data.npy', allow_pickle=True)
+#print(data)

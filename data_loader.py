@@ -33,7 +33,7 @@ class DataPrefetcher():
 
 class TwitterDataset(Dataset):
 
-	def __init__(self, path, trans_func, max_entries=None):
+	def __init__(self, path, trans_func, max_entries=None, token_embedding_level='sentence'):
 		'''
 		read data from file
 		:param path: path of the data file. The raw file ends with .tsv while processed file ends with .npy.
@@ -50,7 +50,7 @@ class TwitterDataset(Dataset):
 				lines = [line.split('\x01') for line in lines]
 				stride = 100
 				for i in trange(0, len(lines), stride):
-					data = process(lines[i:i + stride])
+					data = process(lines[i:i + stride], token_embedding_level)
 					for entry in data:
 						self.X.append(self.transform(entry[:-4]))
 						self.Y.append(torch.tensor(entry[-4:]))
