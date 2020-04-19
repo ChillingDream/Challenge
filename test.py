@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from config import *
 from data_loader import TwitterDataset
-from models.wide_deep import WideDeep
+from models import model
 
 def compute_prauc(pred, gt):
 	prec, recall, thresh = precision_recall_curve(gt, pred)
@@ -55,8 +55,6 @@ def test(model, dataset=None):
 
 
 if __name__ == '__main__':
-	model = WideDeep(emb_length=32,
-					 hidden_units=[128, 64, 32])
 	checkpoint = torch.load(os.path.join(checkpoints_dir, model_name))
 	model.load_state_dict(checkpoint['model_state_dict'])
 	model.to(device)

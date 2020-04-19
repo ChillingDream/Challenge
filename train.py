@@ -7,7 +7,7 @@ from tqdm import trange
 
 from config import *
 from data_loader import TwitterDataset
-from models.wide_deep import WideDeep
+from models import model
 from test import test
 
 def calc_score(prauc, rce):
@@ -16,13 +16,12 @@ def calc_score(prauc, rce):
 writer = SummaryWriter(log_dir=log_dir, flush_secs=30)
 print("Loading training data...")
 time.sleep(0.5)
-train_data = TwitterDataset(os.path.join(data_dir, train_file), WideDeep.transform)
+train_data = TwitterDataset(os.path.join(data_dir, train_file), model.transform)
 time.sleep(0.5)
 print("Loading validation data...")
-test_data = TwitterDataset(os.path.join(data_dir, test_file), WideDeep.transform, val_size)
+test_data = TwitterDataset(os.path.join(data_dir, test_file), model.transform, val_size)
 train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
 
-model = WideDeep(emb_length=32, hidden_units=[128, 64, 32])  # recommending only change the model here
 model.to(device)
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 step = 0

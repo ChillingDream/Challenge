@@ -9,6 +9,9 @@ from config import device
 from data_process import process
 
 class DataPrefetcher():
+	'''
+	useless at present
+	'''
 	def __init__(self, loader):
 		self.loader = loader
 		self.stream = torch.cuda.Stream()

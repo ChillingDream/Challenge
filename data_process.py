@@ -50,11 +50,12 @@ def data_count():
 	np.savez('statistic.npz', N=N, language=language, M_fer=M_fer, M_fng=M_fng)
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
-word_embeddings = bert.embeddings.word_embeddings.weight.data
-statistic = np.load('statistic.npz', allow_pickle=True)
-all_language = statistic['language'][()]
-LM_fer = np.log(statistic['M_fer'] + 1)
-LM_fng = np.log(statistic['M_fng'] + 1)
+
+# word_embeddings = bert.embeddings.word_embeddings.weight.data
+# statistic = np.load('statistic.npz', allow_pickle=True)
+# all_language = statistic['language'][()]
+# LM_fer = np.log(statistic['M_fer'] + 1)
+# LM_fng = np.log(statistic['M_fng'] + 1)
 
 def process(entries, token_embedding_level='sentence'):
 	'''
