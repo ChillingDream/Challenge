@@ -6,6 +6,15 @@ from torch import nn
 from config import device
 from data_process import cont_idx, field_dims
 
+class Flatten(nn.Module):
+	def __init__(self, start_dim=1, end_dim=-1):
+		super().__init__()
+		self.start_dim = start_dim
+		self.end_dim = end_dim
+
+	def forward(self, x):
+		return torch.flatten(x, self.start_dim, self.end_dim)
+
 class MutiheadAttention(nn.Module):
 	def __init__(self, num_in, num_out, num_head):
 		super().__init__()
@@ -38,7 +47,7 @@ class AutoInt(nn.Module):
 				layers.append(MutiheadAttention(emb_length, num_units[0], num_heads[0]))
 			else:
 				layers.append(MutiheadAttention(num_units[i - 1] * num_heads[i - 1], num_units[i], num_heads[i]))
-		layers.append(nn.Flatten())
+		layers.append(Flatten())
 		layers.append(nn.Linear(len(field_dims) * num_units[-1] * num_heads[-1], 1, bias=True))
 		layers.append(nn.Sigmoid())
 		self.layers = nn.Sequential(*layers)
