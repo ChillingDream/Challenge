@@ -46,4 +46,7 @@
 * data_loader.py用于生成dataset,向模型提供数据
 * train.py用于训练
 * test.py用于测试
-* 每个模型单独一个文件用模型名字命名（如FM.py)
+* 每个模型单独一个文件用模型名字命名存放在models目录下（如FM.py)
+* 模型的实例化在models/\__init__.py文件中
+* 训练的过程比如loss记录存放在logs/目录下
+* 模型的参数保存在checkpoints/目录下
