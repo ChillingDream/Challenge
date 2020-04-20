@@ -6,4 +6,4 @@ from models.wide_deep import WideDeep
 if arg.model == 'wide_deep':
 	model = WideDeep(emb_length=32, hidden_units=[128, 64, 32])
 elif arg.model == 'autoint':
-	model = AutoInt(emb_length=32, num_units=[32], num_heads=[8])
+	model = AutoInt(emb_length=32, num_units=[128], num_heads=[16])

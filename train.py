@@ -24,6 +24,8 @@ train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_w
 
 model.to(device)
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+sheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=1,
+												threshold=1e-4, threshold_mode='rel', cooldown=0)
 step = 0
 max_score = (0, -1e10, 0)
 
@@ -32,6 +34,7 @@ if load_checkpoint:
 		os.path.join(checkpoints_dir, model_name + ('best.pt' if load_checkpoint == 'best' else 'latest.pt')))
 	model.load_state_dict(checkpoint['model_state_dict'])
 	optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+	sheduler.load_state_dict(checkpoint['sheduler_state_dict'])
 	step = checkpoint['step']
 	max_score = checkpoint['max_score']
 	print("Checkpoint loaded.")
@@ -51,15 +54,18 @@ for epoch in iteration:
 		loss.backward()
 		optimizer.step()
 
-		if step % 2 == 0:
+		if step % 20 == 19:
 			test_ce, test_prauc, test_rce = test(model, test_data)
 			writer.add_scalars('loss/ce', {'val':test_ce}, step)
 			writer.add_scalars('loss/prauc', {'val':test_prauc}, step)
 			writer.add_scalars('loss/rce', {'val':test_rce}, step)
+			writer.add_scalars('lr', {'lr':optimizer.state_dict()['param_groups'][0]['lr']}, step)
+			sheduler.step(test_ce)
 			if calc_score(test_prauc, test_rce) > calc_score(max_score[0], max_score[1]):
 				max_score = (test_prauc, test_rce, step)
 				torch.save({'model_state_dict':model.state_dict(),
 							'optimizer_state_dict':optimizer.state_dict(),
+							'sheduler_state_dict':sheduler.state_dict(),
 							'step':step,
 							'max_score':max_score},
 						   os.path.join(checkpoints_dir, model_name + 'best.pt'))
@@ -67,6 +73,7 @@ for epoch in iteration:
 	torch.save({'model_state_dict':model.state_dict(),
 				'optimizer_state_dict':optimizer.state_dict(),
 				'step':step,
+				'sheduler_state_dict':sheduler.state_dict(),
 				'max_score':max_score},
 			   os.path.join(checkpoints_dir, model_name + 'latest.pt'))
 	train_ce, train_prauc, train_rce = test(model, train_data)
