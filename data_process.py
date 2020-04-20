@@ -19,17 +19,18 @@ field_dims = [768, 3, 4, 66, 1, 1, 2, 1, 1, 2, 2]
 cate_n = sum([field_dims[i] for i in cate_idx])
 cont_n = sum([field_dims[i] for i in cont_idx])
 
-def data_count():
+def data_count(path):
 	'''
 	collect the statistic of the full data described in the doc.
 	'''
-	language = dict()
-	hashtag = dict()
+	language = {}
+	hashtag = {}
+	hashtag_count = {}
 	M_fer = 0
 	M_fng = 0
 	N = 0
 	max_lines = 1000000
-	with open(os.path.join(data_dir, "training.tsv"), encoding="utf-8") as f:
+	with open(path, encoding="utf-8") as f:
 		while True:
 			lines = list(islice(f, max_lines))
 			if not lines:
@@ -40,6 +41,7 @@ def data_count():
 				language[features[features_to_idx['language']]] = language.get(features[features_to_idx['language']], len(language))
 				for tag in features[features_to_idx['hashtags']].split():
 					hashtag[tag] = hashtag.get(tag, len(hashtag))
+					hashtag_count[tag] = hashtag_count.get(tag, 0) + 1
 				M_fer = max(M_fer, int(features[features_to_idx['engaged_with_user_follower_count']]))
 				M_fer = max(M_fer, int(features[features_to_idx['engaging_user_follower_count']]))
 				M_fng = max(M_fng, int(features[features_to_idx['engaged_with_user_following_count']]))
@@ -47,15 +49,18 @@ def data_count():
 			print(N)
 	print(len(language))
 	print(len(hashtag))
-	np.savez('statistic.npz', N=N, language=language, M_fer=M_fer, M_fng=M_fng)
+	hashtag_count = sorted(hashtag_count.items(), key=lambda x:x[1], reverse=True)
+	with open('hashtag_count.txt', 'w') as f:
+		f.writelines(['%s %d\n' % (tag, count) for tag, count in hashtag_count])
+	np.savez('statistic.npz', N=N, hashtag=hashtag, language=language, M_fer=M_fer, M_fng=M_fng)
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
 
-# word_embeddings = bert.embeddings.word_embeddings.weight.data
-# statistic = np.load('statistic.npz', allow_pickle=True)
-# all_language = statistic['language'][()]
-# LM_fer = np.log(statistic['M_fer'] + 1)
-# LM_fng = np.log(statistic['M_fng'] + 1)
+word_embeddings = bert.embeddings.word_embeddings.weight.data
+statistic = np.load('statistic.npz', allow_pickle=True)
+all_language = statistic['language'][()]
+LM_fer = np.log(statistic['M_fer'] + 1)
+LM_fng = np.log(statistic['M_fng'] + 1)
 
 def process(entries, token_embedding_level='sentence'):
 	'''
@@ -147,6 +152,7 @@ def raw2npy(file):
 	np.save(os.path.join(data_dir, os.path.splitext(file)[0]), data)
 
 if __name__ == '__main__':
+	data_count('./data/toy_training.tsv')
 	# raw2npy('toy_training.tsv')
 	# raw2npy('toy_val.tsv')
 	#	raw2npy('reduced_training.tsv')

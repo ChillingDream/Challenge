@@ -68,14 +68,14 @@ for epoch in iteration:
 							'sheduler_state_dict':sheduler.state_dict(),
 							'step':step,
 							'max_score':max_score},
-						   os.path.join(checkpoints_dir, model_name + 'best.pt'))
+						   os.path.join(checkpoints_dir, model_name + '_best.pt'))
 
 	torch.save({'model_state_dict':model.state_dict(),
 				'optimizer_state_dict':optimizer.state_dict(),
 				'step':step,
 				'sheduler_state_dict':sheduler.state_dict(),
 				'max_score':max_score},
-			   os.path.join(checkpoints_dir, model_name + 'latest.pt'))
+			   os.path.join(checkpoints_dir, model_name + '_latest.pt'))
 	train_ce, train_prauc, train_rce = test(model, train_data)
 	writer.add_scalars('loss/ce', {'train':train_ce}, step)
 	writer.add_scalars('loss/prauc', {'train':train_prauc}, step)

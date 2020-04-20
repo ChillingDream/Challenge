@@ -7,3 +7,5 @@ if arg.model == 'wide_deep':
 	model = WideDeep(emb_length=32, hidden_units=[128, 64, 32])
 elif arg.model == 'autoint':
 	model = AutoInt(emb_length=32, num_units=[128], num_heads=[16])
+else:
+	raise Exception('model required')

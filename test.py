@@ -55,7 +55,7 @@ def test(model, dataset=None):
 
 
 if __name__ == '__main__':
-	checkpoint = torch.load(os.path.join(checkpoints_dir, model_name + 'best.pt'))
+	checkpoint = torch.load(os.path.join(checkpoints_dir, model_name + '_best.pt'))
 	model.load_state_dict(checkpoint['model_state_dict'])
 	model.to(device)
 	ce, prauc, rce = test(model)

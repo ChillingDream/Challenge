@@ -24,7 +24,7 @@ class MutiheadAttention(nn.Module):
 		self.values = nn.Linear(num_in, num_out * num_head, bias=False)
 		self.weights_dropout = nn.Dropout(drop_rate) if use_dropout else None
 		self.res_layer = nn.Linear(num_in, num_out * num_head, bias=False)
-		self.layer_norm = nn.LayerNorm([num_out]) if use_layer_norm else None
+		self.layer_norm = nn.LayerNorm([num_out * num_head]) if use_layer_norm else None
 
 	def forward(self, x):
 		batch = x.size()[0]
