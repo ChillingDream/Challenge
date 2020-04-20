@@ -24,7 +24,7 @@ train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_w
 
 model.to(device)
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-sheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=1,
+sheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.95, patience=100, min_lr=1e-5,
 												threshold=1e-4, threshold_mode='rel', cooldown=0)
 step = 0
 max_score = (0, -1e10, 0)

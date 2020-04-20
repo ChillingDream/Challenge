@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from config import device
+from config import device, drop_rate
 from data_process import cont_idx, field_dims
 
 class Flatten(nn.Module):
@@ -16,13 +16,15 @@ class Flatten(nn.Module):
 		return torch.flatten(x, self.start_dim, self.end_dim)
 
 class MutiheadAttention(nn.Module):
-	def __init__(self, num_in, num_out, num_head):
+	def __init__(self, num_in, num_out, num_head, use_layer_norm=True, use_dropout=True):
 		super().__init__()
 		self.num_out = num_out
 		self.queries = nn.Linear(num_in, num_out * num_head, bias=False)
 		self.keys = nn.Linear(num_in, num_out * num_head, bias=False)
 		self.values = nn.Linear(num_in, num_out * num_head, bias=False)
+		self.weights_dropout = nn.Dropout(drop_rate) if use_dropout else None
 		self.res_layer = nn.Linear(num_in, num_out * num_head, bias=False)
+		self.layer_norm = nn.LayerNorm([num_out]) if use_layer_norm else None
 
 	def forward(self, x):
 		batch = x.size()[0]
@@ -31,9 +33,13 @@ class MutiheadAttention(nn.Module):
 		values = torch.cat(self.values(x).split(self.num_out, -1), 0)
 		weights = queries.matmul(keys.permute([0, 2, 1]))  # QK^T
 		weights = F.softmax(weights / self.num_out ** 0.5, -1)
+		if self.weights_dropout:
+			weights = self.weights_dropout(weights)
 		outputs = weights.matmul(values)
 		outputs = torch.cat(outputs.split(batch, 0), 2)
 		outputs = F.relu(outputs + self.res_layer(x))
+		if self.layer_norm:
+			outputs = self.layer_norm(outputs)
 		return outputs
 
 class AutoInt(nn.Module):
