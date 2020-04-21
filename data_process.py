@@ -40,7 +40,6 @@ def data_count(path):
 				features = line.split('\x01')
 				language[features[features_to_idx['language']]] = language.get(features[features_to_idx['language']], len(language))
 				for tag in features[features_to_idx['hashtags']].split():
-					hashtag[tag] = hashtag.get(tag, len(hashtag))
 					hashtag_count[tag] = hashtag_count.get(tag, 0) + 1
 				M_fer = max(M_fer, int(features[features_to_idx['engaged_with_user_follower_count']]))
 				M_fer = max(M_fer, int(features[features_to_idx['engaging_user_follower_count']]))
@@ -52,6 +51,8 @@ def data_count(path):
 	hashtag_count = sorted(hashtag_count.items(), key=lambda x:x[1], reverse=True)
 	with open('hashtag_count.txt', 'w') as f:
 		f.writelines(['%s %d\n' % (tag, count) for tag, count in hashtag_count])
+	for tag, _ in hashtag_count[:480]:
+		hashtag[tag] = hashtag.get(tag, len(hashtag))
 	np.savez('statistic.npz', N=N, hashtag=hashtag, language=language, M_fer=M_fer, M_fng=M_fng)
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
@@ -152,11 +153,12 @@ def raw2npy(file):
 	np.save(os.path.join(data_dir, os.path.splitext(file)[0]), data)
 
 if __name__ == '__main__':
-	data_count('./data/toy_training.tsv')
+	data_count(os.path.join(data_dir, 'training.tsv'))
 	# raw2npy('toy_training.tsv')
 	# raw2npy('toy_val.tsv')
 	#	raw2npy('reduced_training.tsv')
 	#	raw2npy('reduced_val.tsv')
+	exit(0)
 	with open(os.path.join(data_dir, "toy_training.tsv"), encoding="utf-8") as f:
 		lines = f.readlines(100000)
 		entries = [line.split('\x01') for line in lines]
