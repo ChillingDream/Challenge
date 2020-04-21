@@ -13,19 +13,21 @@ all_features = ["text_tokens", "hashtags", "tweet_id", "present_media", "present
                 "enaging_user_account_creation", "engagee_follows_engager"]
 features_to_idx = dict(zip(all_features, range(len(all_features))))
 labels_to_idx = {"reply_timestamp": 20, "retweet_timestamp": 21, "retweet_with_comment_timestamp": 22, "like_timestamp": 23};
-cate_idx = [1, 2, 3, 6, 9, 10]
-cont_idx = [0, 4, 5, 7, 8]
-field_dims = [768, 3, 4, 66, 1, 1, 2, 1, 1, 2, 2]
+cate_idx = [1, 2, 3, 4, 7, 10, 11]
+cont_idx = [0, 5, 6, 8, 9]
+field_dims = [768, 480, 3, 4, 66, 1, 1, 2, 1, 1, 2, 2]
 cate_n = sum([field_dims[i] for i in cate_idx])
 cont_n = sum([field_dims[i] for i in cont_idx])
 
-def data_count(path):
+def data_count(path, val_path=None):
 	'''
 	collect the statistic of the full data described in the doc.
 	'''
 	language = {}
 	hashtag = {}
 	hashtag_count = {}
+	engaged_user_count = {}
+	engaging_user_count = {}
 	M_fer = 0
 	M_fng = 0
 	N = 0
@@ -38,9 +40,14 @@ def data_count(path):
 			N += len(lines)
 			for line in lines:
 				features = line.split('\x01')
-				language[features[features_to_idx['language']]] = language.get(features[features_to_idx['language']], len(language))
+				language[features[features_to_idx['language']]] = \
+					language.get(features[features_to_idx['language']], len(language))
 				for tag in features[features_to_idx['hashtags']].split():
 					hashtag_count[tag] = hashtag_count.get(tag, 0) + 1
+				engaged_user_count[features[features_to_idx['engaged_with_user_id']]] = \
+					engaged_user_count.get(features[features_to_idx['engaged_with_user_id']], 0) + 1
+				engaging_user_count[features[features_to_idx['engaging_user_id']]] = \
+					engaging_user_count.get(features[features_to_idx['engaging_user_id']], 0) + 1
 				M_fer = max(M_fer, int(features[features_to_idx['engaged_with_user_follower_count']]))
 				M_fer = max(M_fer, int(features[features_to_idx['engaging_user_follower_count']]))
 				M_fng = max(M_fng, int(features[features_to_idx['engaged_with_user_following_count']]))
@@ -48,17 +55,41 @@ def data_count(path):
 			print(N)
 	print(len(language))
 	print(len(hashtag))
+
+	if val_path:
+		tag_recall = 0
+		engaged_user_recall = 0
+		engaing_user_recall = 0
+		with open(val_path, encoding='utf-8') as f:
+			lines = f.readlines()
+			for line in lines:
+				features = line.split('\x01')
+				for tag in features[features_to_idx['hashtags']].split():
+					if tag in hashtag_count:
+						tag_recall += 1
+				if features[features_to_idx['engaged_with_user_id']] in engaging_user_count:
+					engaged_user_recall += 1
+				if features[features_to_idx['engaging_user_id']] in engaging_user_count:
+					engaing_user_recall += 1
+		print(tag_recall, engaged_user_recall, engaged_user_count)
+
 	hashtag_count = sorted(hashtag_count.items(), key=lambda x:x[1], reverse=True)
+	engaged_user_count = sorted(engaged_user_count.items(), key=lambda x:x[1], reverse=True)
+	engaging_user_count = sorted(engaging_user_count.items(), key=lambda x:x[1], reverse=True)
 	with open('hashtag_count.txt', 'w') as f:
 		f.writelines(['%s %d\n' % (tag, count) for tag, count in hashtag_count])
+	with open('engaged_user_count.txt', 'w') as f:
+		f.writelines(['%s %d\n' % (id, count) for id, count in engaged_user_count])
+	with open('engaing_user_count.txt', 'w') as f:
+		f.writelines(['%s %d\n' % (id, count) for id, count in engaging_user_count])
 	for tag, _ in hashtag_count[:480]:
 		hashtag[tag] = hashtag.get(tag, len(hashtag))
 	np.savez('statistic.npz', N=N, hashtag=hashtag, language=language, M_fer=M_fer, M_fng=M_fng)
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
-
 word_embeddings = bert.embeddings.word_embeddings.weight.data
 statistic = np.load('statistic.npz', allow_pickle=True)
+all_hashtag = statistic['hashtag'][()]
 all_language = statistic['language'][()]
 LM_fer = np.log(statistic['M_fer'] + 1)
 LM_fng = np.log(statistic['M_fng'] + 1)
@@ -99,6 +130,12 @@ def process(entries, token_embedding_level='sentence'):
 	else:
 		raise Exception('wrong token embedding level')
 
+	hashtags = np.zeros((len(entries), len(all_hashtag)))
+	for i, tags in enumerate(entries[:, features_to_idx['hashtags']]):
+		for tag in tags.split():
+			if tag in all_hashtag:
+				hashtags[i][all_hashtag[tag]] = 1
+
 	medias = []
 	for media in entries[:, features_to_idx['present_media']]:
 		medias.append(np.array([0., 0., 0.]))
@@ -132,9 +169,18 @@ def process(entries, token_embedding_level='sentence'):
 		[int(x == 'true') for x in entries[:, features_to_idx['engaging_user_is_verified']]]]
 	follow = np.eye(2)[[int(x == 'true') for x in entries[:, features_to_idx['engagee_follows_engager']]]]
 
-	return [[sentence_embedding[i], medias[i], tweet_types[i], languages[i], normed_fer1[i], normed_fng1[i],
+	return [[sentence_embedding[i],
+			 hashtags[i],
+			 medias[i],
+			 tweet_types[i],
+			 languages[i],
+			 normed_fer1[i],
+			 normed_fng1[i],
 			 engaged_verified[i],
-			 normed_fer2[i], normed_fng2[i], engaging_verified[i], follow[i],
+			 normed_fer2[i],
+			 normed_fng2[i],
+			 engaging_verified[i],
+			 follow[i],
 			 bool(entries[i][-4]), bool(entries[i][-3]), bool(entries[i][-2]), bool(entries[i][-1])]
 			for i in range(len(entries))]
 
