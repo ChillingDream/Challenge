@@ -54,12 +54,14 @@ def data_count(path, val_path=None):
 				M_fng = max(M_fng, int(features[features_to_idx['engaging_user_following_count']]))
 			print(N)
 	print(len(language))
-	print(len(hashtag))
+	print(len(hashtag_count))
 
 	if val_path:
 		tag_recall = 0
-		engaged_user_recall = 0
-		engaing_user_recall = 0
+		engaged_engaged_recall = 0
+		engaged_engaging_recall = 0
+		engaging_engaged_recall = 0
+		engaging_engaging_recall = 0
 		with open(val_path, encoding='utf-8') as f:
 			lines = f.readlines()
 			for line in lines:
@@ -67,11 +69,17 @@ def data_count(path, val_path=None):
 				for tag in features[features_to_idx['hashtags']].split():
 					if tag in hashtag_count:
 						tag_recall += 1
+				if features[features_to_idx['engaged_with_user_id']] in engaged_user_count:
+					engaged_engaged_recall += 1
 				if features[features_to_idx['engaged_with_user_id']] in engaging_user_count:
-					engaged_user_recall += 1
+					engaged_engaging_recall += 1
+				if features[features_to_idx['engaging_user_id']] in engaged_user_count:
+					engaging_engaged_recall += 1
 				if features[features_to_idx['engaging_user_id']] in engaging_user_count:
-					engaing_user_recall += 1
-		print(tag_recall, engaged_user_recall, engaged_user_count)
+					engaging_engaging_recall += 1
+		print(tag_recall)
+		print(engaged_engaged_recall, engaged_engaging_recall)
+		print(engaging_engaged_recall, engaging_engaging_recall)
 
 	hashtag_count = sorted(hashtag_count.items(), key=lambda x:x[1], reverse=True)
 	engaged_user_count = sorted(engaged_user_count.items(), key=lambda x:x[1], reverse=True)
@@ -80,7 +88,7 @@ def data_count(path, val_path=None):
 		f.writelines(['%s %d\n' % (tag, count) for tag, count in hashtag_count])
 	with open('engaged_user_count.txt', 'w') as f:
 		f.writelines(['%s %d\n' % (id, count) for id, count in engaged_user_count])
-	with open('engaing_user_count.txt', 'w') as f:
+	with open('engaging_user_count.txt', 'w') as f:
 		f.writelines(['%s %d\n' % (id, count) for id, count in engaging_user_count])
 	for tag, _ in hashtag_count[:480]:
 		hashtag[tag] = hashtag.get(tag, len(hashtag))
@@ -99,7 +107,7 @@ def process(entries, token_embedding_level='sentence'):
 	process multiple lines including token embedding computing and average pooling, onehot encoding and numerical
 	normalization.
 	:param entries: the lines to be processed
-	:return: a list of processed line, each item as a list consisting of 15 numpy array described in the doc.
+	:return: a list of processed line, each item as a list consisting of 16 numpy array described in the doc.
 	'''
 	entries = np.array(entries)
 	tokens = entries[:, features_to_idx['text_tokens']]
@@ -199,11 +207,11 @@ def raw2npy(file):
 	np.save(os.path.join(data_dir, os.path.splitext(file)[0]), data)
 
 if __name__ == '__main__':
-	data_count(os.path.join(data_dir, 'training.tsv'))
-	# raw2npy('toy_training.tsv')
-	# raw2npy('toy_val.tsv')
-	#	raw2npy('reduced_training.tsv')
-	#	raw2npy('reduced_val.tsv')
+#data_count(os.path.join(data_dir, 'training.tsv'), os.path.join(data_dir, 'val.tsv'))
+	raw2npy('toy_training.tsv')
+	raw2npy('toy_val.tsv')
+#raw2npy('reduced_training.tsv')
+#raw2npy('reduced_val.tsv')
 	exit(0)
 	with open(os.path.join(data_dir, "toy_training.tsv"), encoding="utf-8") as f:
 		lines = f.readlines(100000)

@@ -22,14 +22,18 @@ load_parser.add_argument("--load_latest", action='store_true')
 load_parser.add_argument("--load_best", action='store_true')
 
 arg = parser.parse_args()
-device = torch.device("cpu" if arg.device == "cpu" else "cuda:" + arg.device)
+if arg.device == "cpu":
+	device = torch.device("cpu")
+else:
+	os.environ['CUDA_VISIBLE_DEVICES'] = arg.device
+	device = torch.device("cuda:0")
 # data_dir = '/home2/swp/data/twitter/'
 data_dir = 'data/'
 checkpoints_dir = 'checkpoints/'
 model_name = arg.model_name
 log_dir = os.path.join(arg.log_dir, model_name)
-train_file = arg.data_name + '_training.tsv'
-test_file = arg.data_name + '_val.tsv'
+train_file = arg.data_name + '_training.npy'
+test_file = arg.data_name + '_val.npy'
 epochs = arg.epoch
 lr = arg.lr
 weight_decay = arg.weight_decay
