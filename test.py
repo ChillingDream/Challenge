@@ -2,7 +2,6 @@ import time
 
 import numpy as np
 from sklearn.metrics import precision_recall_curve, auc, log_loss
-from torch.utils.data import DataLoader
 
 from config import *
 from data_loader import TwitterDataset
@@ -29,13 +28,12 @@ def compute_rce(pred, gt):
 def test(model, dataset=None):
 	model.eval()
 	if dataset:
-		test_loader = DataLoader(dataset, batch_size=1000, shuffle=False, num_workers=0)
+		test_loader = dataset
 	else:
 		time.sleep(0.5)
 		print("Loading test data...")
 		time.sleep(0.5)
-		test_loader = DataLoader(TwitterDataset(os.path.join(data_dir, test_file), model.transform),
-								 batch_size=1000, shuffle=False, num_workers=0)
+		test_loader = TwitterDataset(os.path.join(data_dir, test_file), model.transform)
 	if not dataset:
 		time.sleep(0.5)
 		print("Testing...")

@@ -1,10 +1,9 @@
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
 
 from config import device, drop_rate
-from data_process import cont_idx, field_dims
+from data_process import field_dims, word_embeddings
 
 class Flatten(nn.Module):
 	def __init__(self, start_dim=1, end_dim=-1):
@@ -45,6 +44,7 @@ class MutiheadAttention(nn.Module):
 class AutoInt(nn.Module):
 	def __init__(self, emb_length, num_units, num_heads):
 		super().__init__()
+		self.token_emb_layer = nn.EmbeddingBag.from_pretrained(word_embeddings)
 		self.emb_layers = nn.ModuleList(
 			[nn.Linear(field_dims[i], emb_length, bias=False) for i in range(len(field_dims))])
 		layers = []
@@ -61,6 +61,7 @@ class AutoInt(nn.Module):
 		self.loss_function = nn.BCELoss()
 
 	def forward(self, x):
+		x = [self.token_emb_layer(x[0][0].to(device), x[0][1].to(device))] + x[1:]
 		emb = torch.stack([layer(field.to(device)) for (field, layer) in zip(x, self.emb_layers)], 1)
 		return self.layers(emb)
 
@@ -69,8 +70,7 @@ class AutoInt(nn.Module):
 
 	@staticmethod
 	def transform(x):
-		return [torch.tensor(x[i] if i in cont_idx else x[i] / max((np.sum(x[i]), 1.))).float() for i in
-				range(len(field_dims))]
+		return x
 
 if __name__ == '__main__':
 	m = AutoInt(32, [10], [8])
