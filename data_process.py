@@ -12,12 +12,17 @@ all_features = ["text_tokens", "hashtags", "tweet_id", "present_media", "present
                 "engaging_user_id", "engaging_user_follower_count", "engaging_user_following_count", "engaging_user_is_verified",
                 "enaging_user_account_creation", "engagee_follows_engager"]
 features_to_idx = dict(zip(all_features, range(len(all_features))))
+feature_idx = [features_to_idx['text_tokens'], features_to_idx['hashtags'], features_to_idx['present_media'],
+			   features_to_idx['tweet_type'], features_to_idx['language'],
+			   features_to_idx['engaged_with_user_follower_count'],
+			   features_to_idx['engaged_with_user_following_count'], features_to_idx['engaged_with_user_is_verified'],
+			   features_to_idx['engaging_user_follower_count'], features_to_idx['engaging_user_following_count'],
+			   features_to_idx['engaging_user_is_verified'], features_to_idx['engagee_follows_engager']]
 labels_to_idx = {"reply_timestamp": 20, "retweet_timestamp": 21, "retweet_with_comment_timestamp": 22, "like_timestamp": 23};
-cate_idx = [1, 2, 3, 4, 7, 10, 11]
-cont_idx = [0, 5, 6, 8, 9]
-field_dims = [768, 480, 3, 4, 66, 1, 1, 2, 1, 1, 2, 2]
-cate_n = sum([field_dims[i] for i in cate_idx])
-cont_n = sum([field_dims[i] for i in cont_idx])
+follow_intervals = 5
+multihot_idx = [1, 2]
+onehot_idx = [3, 4, 5, 6, 7, 8, 9, 10, 11]
+field_dims = [768, 480, 3, 4, 66, follow_intervals, follow_intervals, 2, follow_intervals, follow_intervals, 2, 2]
 
 def data_count(path, val_path=None):
 	'''
@@ -95,22 +100,28 @@ def data_count(path, val_path=None):
 	np.savez('statistic.npz', N=N, hashtag=hashtag, language=language, M_fer=M_fer, M_fng=M_fng)
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
-word_embeddings = bert.embeddings.word_embeddings.weight.data
+word_embeddings = bert.embeddings.word_embeddings.weight.data.to(device)
+all_types = dict(zip(['Retweet', 'Quote', 'Reply', 'TopLevel'], range(4)))
 statistic = np.load('statistic.npz', allow_pickle=True)
 all_hashtag = statistic['hashtag'][()]
 all_language = statistic['language'][()]
-LM_fer = np.log(statistic['M_fer'] + 1)
-LM_fng = np.log(statistic['M_fng'] + 1)
+LM_fer = np.log(statistic['M_fer'] + 1) + 1
+LM_fng = np.log(statistic['M_fng'] + 1) + 1
 
-def process(entries, token_embedding_level='sentence'):
+def process(entries, token_embedding_level):
 	'''
 	process multiple lines including token embedding computing and average pooling, onehot encoding and numerical
 	normalization.
 	:param entries: the lines to be processed
 	:return: a list of processed line, each item as a list consisting of 16 numpy array described in the doc.
 	'''
-	entries = np.array(entries)
-	tokens = entries[:, features_to_idx['text_tokens']]
+
+	batch = len(entries)
+	features = [[] for i in range(len(feature_idx))]
+	for line in entries:
+		for i in range(len(feature_idx)):
+			features[i].append(line[feature_idx[i]])
+	tokens = features[0]
 	tokens = [[int(token) for token in line.split()] for line in tokens]
 	if token_embedding_level == 'sentence':
 		max_length = max([len(line) for line in tokens])
@@ -130,67 +141,77 @@ def process(entries, token_embedding_level='sentence'):
 		bert.eval()
 		with torch.no_grad():
 			layers, _ = bert(tokens, segments, attention_mask)
-		sentence_embedding = (torch.sum(layers[11] * weight_mask.unsqueeze(2), 1)).cpu().numpy()
+		sentence_embedding = (torch.sum(layers[11] * weight_mask.unsqueeze(2), 1)).cpu()
 	elif token_embedding_level == 'word':
-		sentence_embedding = [torch.mean(word_embeddings[line], 0) for line in tokens]
-	elif token_embedding_level == 'None':
-		sentence_embedding = tokens
+		sentence_embedding = torch.stack([torch.mean(word_embeddings[line], 0) for line in tokens])
+	elif token_embedding_level == None:
+		cur_tokens = 0
+		indices = []
+		sentence_embedding = []
+		for line in tokens:
+			indices.append(cur_tokens)
+			cur_tokens += len(line)
+			sentence_embedding.extend(line)
+		sentence_embedding = [torch.tensor(sentence_embedding).to(device), torch.tensor(indices).to(device)]
 	else:
 		raise Exception('wrong token embedding level')
 
-	hashtags = np.zeros((len(entries), len(all_hashtag)))
-	for i, tags in enumerate(entries[:, features_to_idx['hashtags']]):
-		for tag in tags.split():
+	indices = []
+	values = []
+	cur = 0
+	for i, tags in enumerate(features[1]):
+		indices.append(cur)
+		tags = tags.split()
+		for tag in tags:
 			if tag in all_hashtag:
-				hashtags[i][all_hashtag[tag]] = 1
+				values.append(all_hashtag[tag])
+				cur += 1
+	hashtags = [torch.tensor(values).to(device), torch.tensor(indices).to(device)]
 
-	medias = []
-	for media in entries[:, features_to_idx['present_media']]:
-		medias.append(np.array([0., 0., 0.]))
-		for i, m in enumerate(['Photo', 'Video', 'Gif']):
-			if m == media:
-				medias[-1][i] = 1
+	indices = []
+	values = []
+	cur = 0
+	for i, media in enumerate(features[2]):
+		indices.append(cur)
+		media = media.split()
+		for j, m in enumerate(['Photo', 'Video', 'Gif']):
+			if m in media:
+				values.append(j)
+				cur += 1
+	medias = [torch.tensor(values).to(device), torch.tensor(indices).to(device)]
 
-	tweet_types = []
-	for tweet_type in entries[:, features_to_idx['tweet_type']]:
-		for i, t in enumerate(['Retweet', 'Quote', 'Reply', 'TopLevel']):
-			if t == tweet_type:
-				tweet_types.append(np.eye(4)[i])
-				break
+	tweet_types = [torch.tensor([all_types[type] for type in features[3]]).to(device)]
+	languages = [torch.tensor([all_language[language] for language in features[4]]).to(device)]
 
-	languages = np.zeros((len(entries), len(all_language)))
-	for i, language in enumerate(entries[:, features_to_idx['language']]):
-		languages[i][all_language[language]] = 1
+	fer1 = torch.tensor([int(x) for x in features[5]], dtype=torch.float)
+	fer1 = [((fer1 + 1).log() / LM_fer * follow_intervals).long().to(device)]
 
-	fer1 = np.array([[int(x)] for x in entries[:, features_to_idx['engaged_with_user_follower_count']]])
-	normed_fer1 = (np.log(fer1 + 1) / LM_fer).astype(np.float32)
-	fng1 = np.array([[int(x)] for x in entries[:, features_to_idx['engaged_with_user_following_count']]])
-	normed_fng1 = (np.log(fng1 + 1) / LM_fng).astype(np.float32)
-	fer2 = np.array([[int(x)] for x in entries[:, features_to_idx['engaging_user_follower_count']]])
-	normed_fer2 = (np.log(fer2 + 1) / LM_fer).astype(np.float)
-	fng2 = np.array([[int(x)] for x in entries[:, features_to_idx['engaging_user_following_count']]])
-	normed_fng2 = (np.log(fng2 + 1) / LM_fng).astype(np.float)
+	fng1 = torch.tensor([int(x) for x in features[6]], dtype=torch.float)
+	fng1 = [((fng1 + 1).log() / LM_fng * follow_intervals).long().to(device)]
 
-	engaged_verified = np.eye(2)[
-		[int(x == 'true') for x in entries[:, features_to_idx['engaged_with_user_is_verified']]]]
-	engaging_verified = np.eye(2)[
-		[int(x == 'true') for x in entries[:, features_to_idx['engaging_user_is_verified']]]]
-	follow = np.eye(2)[[int(x == 'true') for x in entries[:, features_to_idx['engagee_follows_engager']]]]
+	fer2 = torch.tensor([int(x) for x in features[8]], dtype=torch.float)
+	fer2 = [((fer2 + 1).log() / LM_fer * follow_intervals).long().to(device)]
 
-	return [[sentence_embedding[i],
-			 hashtags[i],
-			 medias[i],
-			 tweet_types[i],
-			 languages[i],
-			 normed_fer1[i],
-			 normed_fng1[i],
-			 engaged_verified[i],
-			 normed_fer2[i],
-			 normed_fng2[i],
-			 engaging_verified[i],
-			 follow[i],
-			 bool(entries[i][-4]), bool(entries[i][-3]), bool(entries[i][-2]), bool(entries[i][-1])]
-			for i in range(len(entries))]
+	fng2 = torch.tensor([int(x) for x in features[9]], dtype=torch.float)
+	fng2 = [((fng2 + 1).log() / LM_fng * follow_intervals).long().to(device)]
+
+	engaged_verified = [torch.tensor([int(x == 'true') for x in features[7]]).to(device)]
+	engaging_verified = [torch.tensor([int(x == 'true') for x in features[10]]).to(device)]
+	follow = [torch.tensor([int(x == 'true') for x in features[11]]).to(device)]
+
+	return [sentence_embedding,
+			hashtags,
+			medias,
+			tweet_types,
+			languages,
+			fer1,
+			fng1,
+			engaged_verified,
+			fer2,
+			fng2,
+			engaging_verified,
+			follow], \
+		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)])
 
 def raw2npy(file):
 	'''
@@ -204,7 +225,8 @@ def raw2npy(file):
 		stride = 100
 		for i in trange(0, len(lines), stride):
 			data += process(lines[i:i + stride])
-	np.save(os.path.join(data_dir, os.path.splitext(file)[0]), data)
+
+#	np.save(os.path.join(data_dir, os.path.splitext(file)[0]), data)
 
 if __name__ == '__main__':
 #data_count(os.path.join(data_dir, 'training.tsv'), os.path.join(data_dir, 'val.tsv'))
