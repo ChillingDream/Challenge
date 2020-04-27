@@ -3,7 +3,7 @@ import os
 
 import torch
 
-torch.set_num_threads(8)
+torch.set_num_threads(1)
 
 parser = argparse.ArgumentParser(description='Run commands')
 parser.add_argument("--device", default="0", type=str)

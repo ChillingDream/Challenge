@@ -12,7 +12,7 @@
 ### 数据处理格式
 每一条数据是一个*list*,每一维分别为：  
 1. $d_w$维向量，实数值，为text_token id对应词向量的平均值
-2. ~~$N_H$维向量，multi-hot,表示有哪些tag(待定）~~
+2. $480$维向量，multi-hot,表示有哪些tag
 3. $3$维向量，multi-hot,依次对应(Photo,Video,Gif)
 4. $4$维向量，one-hot,依次对应(Retweet,Quote,Reply,Toplevel)
 5. $N_L$维向量，one-hot,表示对应语言

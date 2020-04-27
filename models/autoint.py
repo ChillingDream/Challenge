@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from config import device, drop_rate
-from data_process import field_dims, word_embeddings
+from data_process import field_dims, word_embeddings, onehot_idx, multihot_idx
 
 class Flatten(nn.Module):
 	def __init__(self, start_dim=1, end_dim=-1):
@@ -44,9 +44,11 @@ class MutiheadAttention(nn.Module):
 class AutoInt(nn.Module):
 	def __init__(self, emb_length, num_units, num_heads):
 		super().__init__()
-		self.token_emb_layer = nn.EmbeddingBag.from_pretrained(word_embeddings)
-		self.emb_layers = nn.ModuleList(
-			[nn.Linear(field_dims[i], emb_length, bias=False) for i in range(len(field_dims))])
+		self.token_emb_layer = nn.EmbeddingBag.from_pretrained(word_embeddings, freeze=True, mode='mean')
+		self.emb_layers = nn.ModuleList([nn.Linear(word_embeddings.size()[1], emb_length, bias=False)] +
+										[nn.EmbeddingBag(field_dims[i], emb_length, mode='mean') for i in
+										 multihot_idx] +
+										[nn.Embedding(field_dims[i], emb_length) for i in onehot_idx])
 		layers = []
 		for i in range(len(num_units)):
 			if i == 0:
@@ -61,8 +63,11 @@ class AutoInt(nn.Module):
 		self.loss_function = nn.BCELoss()
 
 	def forward(self, x):
-		x = [self.token_emb_layer(x[0][0].to(device), x[0][1].to(device))] + x[1:]
-		emb = torch.stack([layer(field.to(device)) for (field, layer) in zip(x, self.emb_layers)], 1)
+		for i in range(len(x)):
+			for j in range(len(x[i])):
+				x[i][j] = x[i][j].to(device)
+		x = [[self.token_emb_layer(*x[0])]] + x[1:]
+		emb = torch.stack([layer(*field) for (field, layer) in zip(x, self.emb_layers)], 1)
 		return self.layers(emb)
 
 	def loss(self, logits, labels):

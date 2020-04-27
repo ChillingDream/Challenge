@@ -22,7 +22,6 @@ train_data = TwitterDataset(os.path.join(data_dir, train_file), model.transform,
 time.sleep(0.5)
 print("Loading validation data...")
 test_data = TwitterDataset(os.path.join(data_dir, test_file), model.transform, val_size, load_all=True)
-# train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
 
 model.to(device)
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -54,6 +53,8 @@ for epoch in iteration:
 	gt = []
 	for data in train_data:
 		step += 1
+		if step % 500 == 0:
+			break
 		x, y = data
 		gt.extend(y.numpy())
 		optimizer.zero_grad()
@@ -62,6 +63,7 @@ for epoch in iteration:
 		loss = model.loss(logits, y)
 		loss.backward()
 		optimizer.step()
+		del x, y
 
 		if step % 20 == 19:
 			test_ce, test_prauc, test_rce = test(model, test_data)
@@ -70,7 +72,6 @@ for epoch in iteration:
 			writer.add_scalars('loss/rce', {'val':test_rce}, step)
 			writer.add_scalars('lr', {'lr':optimizer.state_dict()['param_groups'][0]['lr']}, step)
 			sheduler.step(test_ce)
-
 			if calc_score(test_prauc, test_rce) > calc_score(max_score[0], max_score[1]):
 				max_score = (test_prauc, test_rce, step)
 				torch.save({'model_state_dict':model.state_dict(),
@@ -95,6 +96,8 @@ for epoch in iteration:
 	writer.add_scalars('loss/rce', {'train':train_rce}, step)
 	iteration.set_description("train loss:%f" % train_ce)
 	writer.flush()
+
+train_data.close()
 
 ce, prauc, rce = test(model)
 print("ce: ", ce)

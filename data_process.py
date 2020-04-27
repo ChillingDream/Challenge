@@ -2,7 +2,6 @@ from itertools import islice
 
 import numpy as np
 from pytorch_pretrained_bert import BertModel
-from torch import sparse
 from tqdm import trange
 
 from config import *
@@ -21,11 +20,9 @@ feature_idx = [features_to_idx['text_tokens'], features_to_idx['hashtags'], feat
 			   features_to_idx['engaging_user_is_verified'], features_to_idx['engagee_follows_engager']]
 labels_to_idx = {"reply_timestamp": 20, "retweet_timestamp": 21, "retweet_with_comment_timestamp": 22, "like_timestamp": 23};
 follow_intervals = 5
-cate_idx = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-cont_idx = [0]
+multihot_idx = [1, 2]
+onehot_idx = [3, 4, 5, 6, 7, 8, 9, 10, 11]
 field_dims = [768, 480, 3, 4, 66, follow_intervals, follow_intervals, 2, follow_intervals, follow_intervals, 2, 2]
-cate_n = sum([field_dims[i] for i in cate_idx])
-cont_n = sum([field_dims[i] for i in cont_idx])
 
 def data_count(path, val_path=None):
 	'''
@@ -103,7 +100,8 @@ def data_count(path, val_path=None):
 	np.savez('statistic.npz', N=N, hashtag=hashtag, language=language, M_fer=M_fer, M_fng=M_fng)
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
-word_embeddings = bert.embeddings.word_embeddings.weight.data.to(device)
+word_embeddings = bert.embeddings.word_embeddings.weight.data
+all_types = dict(zip(['Retweet', 'Quote', 'Reply', 'TopLevel'], range(4)))
 statistic = np.load('statistic.npz', allow_pickle=True)
 all_hashtag = statistic['hashtag'][()]
 all_language = statistic['language'][()]
@@ -117,12 +115,6 @@ def process(entries, token_embedding_level):
 	:param entries: the lines to be processed
 	:return: a list of processed line, each item as a list consisting of 16 numpy array described in the doc.
 	'''
-
-	def to_sparse(indices, values, size):
-		if indices:
-			return sparse.FloatTensor(torch.tensor(indices).t(), torch.tensor(values, dtype=torch.float32),
-									  torch.Size(size))
-		return sparse.FloatTensor(torch.Size(size))
 
 	batch = len(entries)
 	features = [[] for i in range(len(feature_idx))]
@@ -160,69 +152,52 @@ def process(entries, token_embedding_level):
 			indices.append(cur_tokens)
 			cur_tokens += len(line)
 			sentence_embedding.extend(line)
-		sentence_embedding = (torch.tensor(sentence_embedding), torch.tensor(indices))
+		sentence_embedding = [torch.tensor(sentence_embedding).share_memory_(), torch.tensor(indices).share_memory_()]
 	else:
 		raise Exception('wrong token embedding level')
 
 	indices = []
 	values = []
+	cur = 0
 	for i, tags in enumerate(features[1]):
+		indices.append(cur)
 		tags = tags.split()
-		tags = [tag for tag in tags if tag in all_hashtag]
 		for tag in tags:
-			indices.append([i, all_hashtag[tag]])
-			values.append(1 / len(tags))
-	hashtags = to_sparse(indices, values, [batch, len(all_hashtag)])
+			if tag in all_hashtag:
+				values.append(all_hashtag[tag])
+				cur += 1
+	hashtags = [torch.tensor(values).share_memory_(), torch.tensor(indices).share_memory_()]
 
 	indices = []
 	values = []
+	cur = 0
 	for i, media in enumerate(features[2]):
+		indices.append(cur)
 		media = media.split()
-		cnt = 0
 		for j, m in enumerate(['Photo', 'Video', 'Gif']):
 			if m in media:
-				cnt += 1
-				indices.append([i, j])
-		if cnt:
-			values += [1 / cnt] * cnt
-	medias = to_sparse(indices, values, [batch, 3])
+				values.append(j)
+				cur += 1
+	medias = [torch.tensor(values).share_memory_(), torch.tensor(indices).share_memory_()]
 
-	indices = []
-	values = []
-	for i, tweet_type in enumerate(features[3]):
-		for j, t in enumerate(['Retweet', 'Quote', 'Reply', 'TopLevel']):
-			if t == tweet_type:
-				indices.append([i, j])
-				values.append(1)
-				break
-	tweet_types = to_sparse(indices, values, [batch, 4])
+	tweet_types = [torch.tensor([all_types[type] for type in features[3]]).share_memory_()]
+	languages = [torch.tensor([all_language[language] for language in features[4]]).share_memory_()]
 
-	indices = [[i, all_language[language]] for i, language in enumerate(features[4])]
-	values = [1] * batch
-	languages = to_sparse(indices, values, [batch, len(all_language)])
+	fer1 = torch.tensor([int(x) for x in features[5]], dtype=torch.float)
+	fer1 = [((fer1 + 1).log() / LM_fer * follow_intervals).long().share_memory_()]
 
-	fer1 = np.array([[int(x)] for x in features[5]])
-	fer1 = np.trunc(np.log(fer1 + 1) / LM_fer * follow_intervals).astype(np.int32)
-	fer1 = to_sparse(list(zip(range(batch), fer1)), [1] * batch, [batch, follow_intervals])
+	fng1 = torch.tensor([int(x) for x in features[6]], dtype=torch.float)
+	fng1 = [((fng1 + 1).log() / LM_fng * follow_intervals).long().share_memory_()]
 
-	fng1 = np.array([[int(x)] for x in features[6]])
-	fng1 = np.trunc(np.log(fng1 + 1) / LM_fng * follow_intervals).astype(np.int32)
-	fng1 = to_sparse(list(zip(range(batch), fng1)), [1] * batch, [batch, follow_intervals])
+	fer2 = torch.tensor([int(x) for x in features[8]], dtype=torch.float)
+	fer2 = [((fer2 + 1).log() / LM_fer * follow_intervals).long().share_memory_()]
 
-	fer2 = np.array([[int(x)] for x in features[8]])
-	fer2 = np.trunc(np.log(fer2 + 1) / LM_fer * follow_intervals).astype(np.int32)
-	fer2 = to_sparse(list(zip(range(batch), fer2)), [1] * batch, [batch, follow_intervals])
+	fng2 = torch.tensor([int(x) for x in features[9]], dtype=torch.float)
+	fng2 = [((fng2 + 1).log() / LM_fng * follow_intervals).long().share_memory_()]
 
-	fng2 = np.array([[int(x)] for x in features[9]])
-	fng2 = np.trunc(np.log(fng2 + 1) / LM_fng * follow_intervals).astype(np.int32)
-	fng2 = to_sparse(list(zip(range(batch), fng2)), [1] * batch, [batch, follow_intervals])
-
-	engaged_verified = torch.eye(2, dtype=torch.float32)[
-		[int(x == 'true') for x in features[7]]]
-	engaging_verified = torch.eye(2, dtype=torch.float32)[
-		[int(x == 'true') for x in features[10]]]
-	follow = torch.eye(2, dtype=torch.float32)[
-		[int(x == 'true') for x in features[11]]]
+	engaged_verified = [torch.tensor([int(x == 'true') for x in features[7]]).share_memory_()]
+	engaging_verified = [torch.tensor([int(x == 'true') for x in features[10]]).share_memory_()]
+	follow = [torch.tensor([int(x == 'true') for x in features[11]]).share_memory_()]
 
 	return [sentence_embedding,
 			hashtags,
@@ -236,7 +211,7 @@ def process(entries, token_embedding_level):
 			fng2,
 			engaging_verified,
 			follow], \
-		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)])
+		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)]).share_memory_()
 
 def raw2npy(file):
 	'''
