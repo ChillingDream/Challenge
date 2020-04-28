@@ -1,6 +1,5 @@
 import time
 
-import numpy as np
 from sklearn.metrics import precision_recall_curve, auc, log_loss
 
 from config import *
@@ -20,7 +19,7 @@ def calculate_ctr(gt):
 
 
 def compute_rce(pred, gt):
-	cross_entropy = log_loss(gt, pred)
+	cross_entropy = log_loss(gt, pred, labels=[0, 1])
 	data_ctr = calculate_ctr(gt)
 	strawman_cross_entropy = log_loss(gt, [data_ctr for _ in range(len(gt))])
 	return (1.0 - cross_entropy/strawman_cross_entropy)*100.0

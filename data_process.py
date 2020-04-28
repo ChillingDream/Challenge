@@ -1,6 +1,5 @@
 from itertools import islice
 
-import numpy as np
 from pytorch_pretrained_bert import BertModel
 from tqdm import trange
 
@@ -212,6 +211,111 @@ def process(entries, token_embedding_level):
 			engaging_verified,
 			follow], \
 		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)])
+
+def process_mp(entries, token_embedding_level):
+	'''
+	process multiple lines including token embedding computing and average pooling, onehot encoding and numerical
+	normalization.
+	:param entries: the lines to be processed
+	:return: a list of processed line, each item as a list consisting of 16 numpy array described in the doc.
+	'''
+
+	batch = len(entries)
+	features = [[] for i in range(len(feature_idx))]
+	for line in entries:
+		for i in range(len(feature_idx)):
+			features[i].append(line[feature_idx[i]])
+	tokens = features[0]
+	tokens = [[int(token) for token in line.split()] for line in tokens]
+	if token_embedding_level == 'sentence':
+		max_length = max([len(line) for line in tokens])
+		attention_mask = []
+		weight_mask = []
+		for line in tokens:
+			l = len(line)
+			line += [0] * (max_length - l)
+			attention_mask.append([1] * l + [0] * (max_length - l))
+			weight_mask.append(np.array(attention_mask[-1]) / l)
+
+		tokens = torch.tensor(tokens).to(device)
+		segments = torch.ones_like(tokens).to(device)
+		attention_mask = torch.tensor(attention_mask).to(device)
+		weight_mask = torch.tensor(weight_mask, dtype=torch.float32).to(device)
+		bert.to(device)
+		bert.eval()
+		with torch.no_grad():
+			layers, _ = bert(tokens, segments, attention_mask)
+		sentence_embedding = (torch.sum(layers[11] * weight_mask.unsqueeze(2), 1)).cpu()
+	elif token_embedding_level == 'word':
+		sentence_embedding = torch.stack([torch.mean(word_embeddings[line], 0) for line in tokens])
+	elif token_embedding_level == None:
+		cur_tokens = 0
+		indices = []
+		sentence_embedding = []
+		for line in tokens:
+			indices.append(cur_tokens)
+			cur_tokens += len(line)
+			sentence_embedding.extend(line)
+		sentence_embedding = [torch.tensor(sentence_embedding).share_memory_(), torch.tensor(indices).share_memory_()]
+	else:
+		raise Exception('wrong token embedding level')
+
+	indices = []
+	values = []
+	cur = 0
+	for i, tags in enumerate(features[1]):
+		indices.append(cur)
+		tags = tags.split()
+		for tag in tags:
+			if tag in all_hashtag:
+				values.append(all_hashtag[tag])
+				cur += 1
+	hashtags = [torch.tensor(values).share_memory_(), torch.tensor(indices).share_memory_()]
+
+	indices = []
+	values = []
+	cur = 0
+	for i, media in enumerate(features[2]):
+		indices.append(cur)
+		media = media.split()
+		for j, m in enumerate(['Photo', 'Video', 'Gif']):
+			if m in media:
+				values.append(j)
+				cur += 1
+	medias = [torch.tensor(values).share_memory_(), torch.tensor(indices).share_memory_()]
+
+	tweet_types = [torch.tensor([all_types[type] for type in features[3]]).share_memory_()]
+	languages = [torch.tensor([all_language[language] for language in features[4]]).share_memory_()]
+
+	fer1 = torch.tensor([int(x) for x in features[5]], dtype=torch.float)
+	fer1 = [((fer1 + 1).log() / LM_fer * follow_intervals).long().share_memory_()]
+
+	fng1 = torch.tensor([int(x) for x in features[6]], dtype=torch.float)
+	fng1 = [((fng1 + 1).log() / LM_fng * follow_intervals).long().share_memory_()]
+
+	fer2 = torch.tensor([int(x) for x in features[8]], dtype=torch.float)
+	fer2 = [((fer2 + 1).log() / LM_fer * follow_intervals).long().share_memory_()]
+
+	fng2 = torch.tensor([int(x) for x in features[9]], dtype=torch.float)
+	fng2 = [((fng2 + 1).log() / LM_fng * follow_intervals).long().share_memory_()]
+
+	engaged_verified = [torch.tensor([int(x == 'true') for x in features[7]]).share_memory_()]
+	engaging_verified = [torch.tensor([int(x == 'true') for x in features[10]]).share_memory_()]
+	follow = [torch.tensor([int(x == 'true') for x in features[11]]).share_memory_()]
+
+	return [sentence_embedding,
+			hashtags,
+			medias,
+			tweet_types,
+			languages,
+			fer1,
+			fng1,
+			engaged_verified,
+			fer2,
+			fng2,
+			engaging_verified,
+			follow], \
+		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)]).share_memory_()
 
 def raw2npy(file):
 	'''

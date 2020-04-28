@@ -49,6 +49,8 @@ class AutoInt(nn.Module):
 										[nn.EmbeddingBag(field_dims[i], emb_length, mode='mean') for i in
 										 multihot_idx] +
 										[nn.Embedding(field_dims[i], emb_length) for i in onehot_idx])
+		for layer in self.emb_layers[1:]:
+			nn.init.normal_(layer.weight, 0, emb_length ** -0.5)
 		layers = []
 		for i in range(len(num_units)):
 			if i == 0:

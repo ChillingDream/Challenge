@@ -2,7 +2,6 @@ import shutil
 import sys
 import time
 
-import numpy as np
 import torch.optim as optim
 from tensorboardX import SummaryWriter
 from tqdm import trange
@@ -15,14 +14,14 @@ from test import test, log_loss, compute_rce, compute_prauc
 def calc_score(prauc, rce):
 	return prauc * 100 + rce
 
-writer = SummaryWriter(log_dir=log_dir, flush_secs=300)
+writer = SummaryWriter(log_dir, flush_secs=300)
 print("Loading training data...")
 time.sleep(0.5)
-train_data = TwitterDataset(os.path.join(data_dir, train_file), model.transform, shuffle=True)
+train_data = TwitterDataset(os.path.join(data_dir, train_file), model.transform, shuffle=True,
+							cache_size=100000, n_workers=n_workers)
 time.sleep(0.5)
 print("Loading validation data...")
 test_data = TwitterDataset(os.path.join(data_dir, test_file), model.transform, val_size, load_all=True)
-# train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
 
 model.to(device)
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -39,15 +38,17 @@ if load_checkpoint:
 	sheduler.load_state_dict(checkpoint['sheduler_state_dict'])
 	step = checkpoint['step']
 	max_score = checkpoint['max_score']
-	print("Checkpoint loaded.")
+	print("Checkpoint has been loaded.")
 
 if not sys.platform.startswith('win'):
 	os.system('rm -rf ' + os.path.join(log_dir, '*'))
 else:
 	shutil.rmtree(log_dir)
+print("%d entries has been loaded" % len(train_data))
 print("Training...")
 time.sleep(0.5)
 iteration = trange(epochs)
+batches_per_epoch = (len(train_data) - 1) // batch_size + 1
 for epoch in iteration:
 	model.train()
 	pred = []
@@ -79,13 +80,16 @@ for epoch in iteration:
 							'step':step,
 							'max_score':max_score},
 						   os.path.join(checkpoints_dir, model_name + '_best.pt'))
+		if step % batches_per_epoch == batches_per_epoch - 1:
+			break
 
-	torch.save({'model_state_dict':model.state_dict(),
-				'optimizer_state_dict':optimizer.state_dict(),
-				'step':step,
-				'sheduler_state_dict':sheduler.state_dict(),
-				'max_score':max_score},
-			   os.path.join(checkpoints_dir, model_name + '_latest.pt'))
+	if save_latest:
+		torch.save({'model_state_dict':model.state_dict(),
+					'optimizer_state_dict':optimizer.state_dict(),
+					'step':step,
+					'sheduler_state_dict':sheduler.state_dict(),
+					'max_score':max_score},
+				   os.path.join(checkpoints_dir, model_name + '_latest.pt'))
 	pred = np.array(pred, dtype=np.float64)
 	train_ce = log_loss(gt, pred)
 	train_prauc = compute_prauc(pred, gt)
@@ -95,6 +99,8 @@ for epoch in iteration:
 	writer.add_scalars('loss/rce', {'train':train_rce}, step)
 	iteration.set_description("train loss:%f" % train_ce)
 	writer.flush()
+train_data.close()
+writer.close()
 
 ce, prauc, rce = test(model)
 print("ce: ", ce)
