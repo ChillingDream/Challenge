@@ -112,7 +112,9 @@ def process(entries, token_embedding_level):
 	process multiple lines including token embedding computing and average pooling, onehot encoding and numerical
 	normalization.
 	:param entries: the lines to be processed
-	:return: a list of processed line, each item as a list consisting of 16 numpy array described in the doc.
+	:param token_embedding_level: one of sentence, word and none. sentence means using bert forwarding; work means only
+	using the word embedding; none means feed the token id into the model and make embedding inside the model.
+	:return: (x,y). x is a batch of 12 tensors, each representing a feature. y is a batch of labels
 	'''
 
 	batch = len(entries)
@@ -145,8 +147,8 @@ def process(entries, token_embedding_level):
 		sentence_embedding = torch.stack([torch.mean(word_embeddings[line], 0) for line in tokens])
 	elif token_embedding_level == None:
 		cur_tokens = 0
-		indices = []
-		sentence_embedding = []
+		indices = []  # the indices indicating the start of each batch, as nn.EmbeddingBag requires
+		sentence_embedding = []  # the token id of all the batch as a 1-d tensor
 		for line in tokens:
 			indices.append(cur_tokens)
 			cur_tokens += len(line)
@@ -155,8 +157,8 @@ def process(entries, token_embedding_level):
 	else:
 		raise Exception('wrong token embedding level')
 
-	indices = []
-	values = []
+	indices = []  # similar to sentence embedding
+	values = []  # similar to sentence embedding
 	cur = 0
 	for i, tags in enumerate(features[1]):
 		indices.append(cur)
@@ -214,10 +216,7 @@ def process(entries, token_embedding_level):
 
 def process_mp(entries, token_embedding_level):
 	'''
-	process multiple lines including token embedding computing and average pooling, onehot encoding and numerical
-	normalization.
-	:param entries: the lines to be processed
-	:return: a list of processed line, each item as a list consisting of 16 numpy array described in the doc.
+	the multiprocessing version of the process
 	'''
 
 	batch = len(entries)
@@ -256,7 +255,7 @@ def process_mp(entries, token_embedding_level):
 			indices.append(cur_tokens)
 			cur_tokens += len(line)
 			sentence_embedding.extend(line)
-		sentence_embedding = [torch.tensor(sentence_embedding).share_memory_(), torch.tensor(indices).share_memory_()]
+		sentence_embedding = [torch.tensor(sentence_embedding), torch.tensor(indices)]
 	else:
 		raise Exception('wrong token embedding level')
 
@@ -270,7 +269,7 @@ def process_mp(entries, token_embedding_level):
 			if tag in all_hashtag:
 				values.append(all_hashtag[tag])
 				cur += 1
-	hashtags = [torch.tensor(values).share_memory_(), torch.tensor(indices).share_memory_()]
+	hashtags = [torch.tensor(values), torch.tensor(indices)]
 
 	indices = []
 	values = []
@@ -282,26 +281,26 @@ def process_mp(entries, token_embedding_level):
 			if m in media:
 				values.append(j)
 				cur += 1
-	medias = [torch.tensor(values).share_memory_(), torch.tensor(indices).share_memory_()]
+	medias = [torch.tensor(values), torch.tensor(indices)]
 
-	tweet_types = [torch.tensor([all_types[type] for type in features[3]]).share_memory_()]
-	languages = [torch.tensor([all_language[language] for language in features[4]]).share_memory_()]
+	tweet_types = [torch.tensor([all_types[type] for type in features[3]])]
+	languages = [torch.tensor([all_language[language] for language in features[4]])]
 
 	fer1 = torch.tensor([int(x) for x in features[5]], dtype=torch.float)
-	fer1 = [((fer1 + 1).log() / LM_fer * follow_intervals).long().share_memory_()]
+	fer1 = [((fer1 + 1).log() / LM_fer * follow_intervals).long()]
 
 	fng1 = torch.tensor([int(x) for x in features[6]], dtype=torch.float)
-	fng1 = [((fng1 + 1).log() / LM_fng * follow_intervals).long().share_memory_()]
+	fng1 = [((fng1 + 1).log() / LM_fng * follow_intervals).long()]
 
 	fer2 = torch.tensor([int(x) for x in features[8]], dtype=torch.float)
-	fer2 = [((fer2 + 1).log() / LM_fer * follow_intervals).long().share_memory_()]
+	fer2 = [((fer2 + 1).log() / LM_fer * follow_intervals).long()]
 
 	fng2 = torch.tensor([int(x) for x in features[9]], dtype=torch.float)
-	fng2 = [((fng2 + 1).log() / LM_fng * follow_intervals).long().share_memory_()]
+	fng2 = [((fng2 + 1).log() / LM_fng * follow_intervals).long()]
 
-	engaged_verified = [torch.tensor([int(x == 'true') for x in features[7]]).share_memory_()]
-	engaging_verified = [torch.tensor([int(x == 'true') for x in features[10]]).share_memory_()]
-	follow = [torch.tensor([int(x == 'true') for x in features[11]]).share_memory_()]
+	engaged_verified = [torch.tensor([int(x == 'true') for x in features[7]])]
+	engaging_verified = [torch.tensor([int(x == 'true') for x in features[10]])]
+	follow = [torch.tensor([int(x == 'true') for x in features[11]])]
 
 	return [sentence_embedding,
 			hashtags,

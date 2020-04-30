@@ -8,8 +8,6 @@ from config import device, batch_size
 from data_process import process, process_mp
 from models.autoint import AutoInt
 
-torch.multiprocessing.set_sharing_strategy('file_system')
-
 def load_data(file_path, queue, offset, stride, cache_size, shuffle=True):
 	f = open(file_path, encoding="utf-8")
 	list(islice(f, offset * cache_size))
@@ -31,10 +29,16 @@ def load_data(file_path, queue, offset, stride, cache_size, shuffle=True):
 class TwitterDataset():
 
 	def __init__(self, path, trans_func, max_lines=None, token_embedding_level=None, cache_size=1000000, shuffle=False,
-				 load_all=False, n_workers=0):
+				 n_workers=0):
 		'''
-		read data from file
-		:param path: path of the data file. The .npy is abolished.
+		read the data from the disk file
+		:param path: the full path of the file
+		:param trans_func: the transform function provided by model
+		:param max_lines: if set, dataset will only read the first max_lines lines of the file.
+		:param token_embedding_level: the token_embedding_level for process
+		:param cache_size: how many lines will one load read in
+		:param shuffle: whether to random shuffle a cache
+		:param n_workers: how many processes used to process data. if set 0, dataset will not use multiprocessing
 		'''
 		self.data = []
 		self.current_line = 0
@@ -45,15 +49,17 @@ class TwitterDataset():
 		self.cache_size = cache_size
 		self.shuffle = shuffle
 		self.token_embedding_level = token_embedding_level
-		self.load_all = load_all
+		self.load_all = False
 		self.n_workers = n_workers
+		self.processors = []
 		with open(path, encoding='utf-8') as f:
 			self.__len = sum(1 for _ in f)
-		if load_all:
+		if self.__len <= cache_size * max([1, n_workers]):
+			self.load_all = True
+		if self.load_all:
 			self._load()
 		elif n_workers > 0:
-			self.queue = torch.multiprocessing.Manager().Queue(1000)
-			self.processors = []
+			self.queue = torch.multiprocessing.Manager().Queue(100)
 			for i in range(n_workers):
 				self.processors.append(torch.multiprocessing.Process(target=load_data, args=(path,
 																							 self.queue,
@@ -67,6 +73,10 @@ class TwitterDataset():
 		return self.__len
 
 	def _load(self):
+		'''
+		load cache_size lines from the last ending
+		:return: whether the file ends
+		'''
 		if self.max_lines:
 			lines = list(islice(self.file, min([self.cache_size, self.max_lines - self.current_line])))
 		else:

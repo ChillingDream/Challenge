@@ -16,11 +16,11 @@
 3. $3$维向量，multi-hot,依次对应(Photo,Video,Gif)
 4. $4$维向量，one-hot,依次对应(Retweet,Quote,Reply,Toplevel)
 5. $N_L$维向量，one-hot,表示对应语言
-6. $1$维向量，实数，$normalize(c)=\frac{log(c+1)}{log(M_{FER}\ +1)}$, 归一化后的发推者关注者数
-7. $1$维向量，实数，$normalize(c)=\frac{log(c+1)}{log(M_{FNG}\ +1)}$, 归一化后的发推者关注数
+6. $5$维向量，one-hot，$normalize(c)=\frac{log(c+1)}{log(M_{FER}\ +1)}$, 归一化后的发推者关注者数, 将[0,1]平分成5段. 用所在段作为这一维特征。
+7. $5$维向量，one-hot，$normalize(c)=\frac{log(c+1)}{log(M_{FNG}\ +1)}$, 归一化后的发推者关注数, 将[0,1]平分成5段. 用所在段作为这一维特征。
 8. $2$维向量，one-hot,依次对应（False,True),表示发推者是否经过验证
-9. $1$维向量，实数，$normalize(c)=\frac{log(c+1)}{log(M_{FER}\ +1)}$, 归一化后的互动者关注者数
-10. $1$维向量，实数，$normalize(c)=\frac{log(c+1)}{log(M_{FNG}\ +1)}$, 归一化后的互动者关注数
+9. $5$维向量，one-hot，$normalize(c)=\frac{log(c+1)}{log(M_{FER}\ +1)}$, 归一化后的互动者关注者数, 将[0,1]平分成5段. 用所在段作为这一维特征。
+10. $5$维向量，one-hot，$normalize(c)=\frac{log(c+1)}{log(M_{FNG}\ +1)}$, 归一化后的互动者关注数, 将[0,1]平分成5段. 用所在段作为这一维特征。
 11. $2$维向量，one-hot,依次对应（False,True),表示互动者是否经过验证
 12. $2$维向量，one-hot,依次对应（False,True),表示发推者是否关注互动者
 13. $1$维向量，True or False,表示是否产生reply

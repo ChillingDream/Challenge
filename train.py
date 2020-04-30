@@ -1,4 +1,3 @@
-import shutil
 import sys
 import time
 
@@ -14,14 +13,18 @@ from test import test, log_loss, compute_rce, compute_prauc
 def calc_score(prauc, rce):
 	return prauc * 100 + rce
 
+if not sys.platform.startswith('win'):
+	os.system('rm -rf ' + os.path.join(log_dir, '*'))
+else:
+	os.system('rmdir /s/q' + log_dir)
+
 writer = SummaryWriter(log_dir, flush_secs=300)
 print("Loading training data...")
 time.sleep(0.5)
-train_data = TwitterDataset(train_file, model.transform, shuffle=True,
-							cache_size=100000, n_workers=n_workers)
+train_data = TwitterDataset(train_file, model.transform, shuffle=True, cache_size=100000, n_workers=n_workers)
 time.sleep(0.5)
 print("Loading validation data...")
-test_data = TwitterDataset(test_file, model.transform, val_size, load_all=True)
+test_data = TwitterDataset(test_file, model.transform, val_size)
 
 model.to(device)
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -40,10 +43,6 @@ if load_checkpoint:
 	max_score = checkpoint['max_score']
 	print("Checkpoint has been loaded.")
 
-if not sys.platform.startswith('win'):
-	os.system('rm -rf ' + os.path.join(log_dir, '*'))
-else:
-	shutil.rmtree(log_dir)
 print("%d entries has been loaded" % len(train_data))
 print("Training...")
 time.sleep(0.5)
@@ -71,7 +70,7 @@ for epoch in iteration:
 			writer.add_scalars('loss/prauc', {'val':test_prauc}, step)
 			writer.add_scalars('loss/rce', {'val':test_rce}, step)
 			writer.add_scalars('lr', {'lr':optimizer.state_dict()['param_groups'][0]['lr']}, step)
-			sheduler.step(test_ce)
+			# sheduler.step(test_ce)
 
 			if calc_score(test_prauc, test_rce) > calc_score(max_score[0], max_score[1]):
 				max_score = (test_prauc, test_rce, step)
@@ -91,6 +90,8 @@ for epoch in iteration:
 					'sheduler_state_dict':sheduler.state_dict(),
 					'max_score':max_score},
 				   os.path.join(checkpoints_dir, model_name + '_latest.pt'))
+	# for name, param in model.named_parameters():
+	#	writer.add_histogram(name, param.data.clone().detach().cpu().numpy(), epoch)
 	pred = np.array(pred, dtype=np.float64)
 	train_ce = log_loss(gt, pred)
 	train_prauc = compute_prauc(pred, gt)
