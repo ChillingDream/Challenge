@@ -17,11 +17,11 @@ def calc_score(prauc, rce):
 writer = SummaryWriter(log_dir, flush_secs=300)
 print("Loading training data...")
 time.sleep(0.5)
-train_data = TwitterDataset(os.path.join(data_dir, train_file), model.transform, shuffle=True,
+train_data = TwitterDataset(train_file, model.transform, shuffle=True,
 							cache_size=100000, n_workers=n_workers)
 time.sleep(0.5)
 print("Loading validation data...")
-test_data = TwitterDataset(os.path.join(data_dir, test_file), model.transform, val_size, load_all=True)
+test_data = TwitterDataset(test_file, model.transform, val_size, load_all=True)
 
 model.to(device)
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -56,13 +56,14 @@ for epoch in iteration:
 	for data in train_data:
 		step += 1
 		x, y = data
-		gt.extend(y.numpy())
+		gt.extend(y.clone().numpy())
 		optimizer.zero_grad()
 		logits = model(x).squeeze()
-		pred.extend(logits.detach().cpu().numpy())
+		pred.extend(logits.clone().detach().cpu().numpy())
 		loss = model.loss(logits, y)
 		loss.backward()
 		optimizer.step()
+		del x, y
 
 		if step % 20 == 19:
 			test_ce, test_prauc, test_rce = test(model, test_data)

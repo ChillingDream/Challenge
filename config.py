@@ -31,13 +31,16 @@ if arg.device == "cpu":
 else:
 	os.environ['CUDA_VISIBLE_DEVICES'] = arg.device
 	device = torch.device("cuda:0")
-# data_dir = '/home2/swp/data/twitter/'
 data_dir = 'data/'
 checkpoints_dir = 'checkpoints/'
 model_name = arg.model_name
 log_dir = os.path.join(arg.log_dir, model_name)
-train_file = arg.data_name + '_training.tsv'
-test_file = arg.data_name + '_val.tsv'
+if arg.data_name == 'all':
+	train_file = '/home2/swp/data/twitter/training.tsv'
+	test_file = 'data/reduced_val.tsv'
+else:
+	train_file = 'data/' + arg.data_name + '_training.tsv'
+	test_file = 'data/' + arg.data_name + '_val.tsv'
 epochs = arg.epoch
 lr = arg.lr
 weight_decay = arg.weight_decay

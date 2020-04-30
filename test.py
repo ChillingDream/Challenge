@@ -32,7 +32,7 @@ def test(model, dataset=None):
 		time.sleep(0.5)
 		print("Loading test data...")
 		time.sleep(0.5)
-		test_loader = TwitterDataset(os.path.join(data_dir, test_file), model.transform)
+		test_loader = TwitterDataset(test_file, model.transform)
 	if not dataset:
 		time.sleep(0.5)
 		print("Testing...")
