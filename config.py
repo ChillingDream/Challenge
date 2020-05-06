@@ -12,7 +12,7 @@ parser.add_argument("--device", default="0", type=str)
 parser.add_argument("--log_dir", default="logs", type=str)
 parser.add_argument("--model", choices=['autoint', 'widedeep'])
 parser.add_argument("--model_name", default="exp1", type=str)
-parser.add_argument("--epoch", default=200, type=int)
+parser.add_argument("--epoch", default=20, type=int)
 parser.add_argument("--lr", default=1e-3, type=float)
 parser.add_argument("--weight_decay", default=1e-5, type=float)
 parser.add_argument("--dropout", default=0.5, type=float)
@@ -20,6 +20,7 @@ parser.add_argument("--batch", default=2000, type=int)
 parser.add_argument("--data_name", default='reduced', type=str)
 parser.add_argument("--val_size", default=2000, type=int)
 parser.add_argument("--n_workers", default=4, type=int)
+parser.add_argument("--label", default='like', choices=['retweet', 'reply', 'like', 'comment'])
 parser.add_argument("--save_latest", action='store_true')
 load_parser = parser.add_mutually_exclusive_group()
 load_parser.add_argument("--load_latest", action='store_true')
@@ -48,7 +49,7 @@ drop_rate = arg.dropout
 batch_size = arg.batch
 val_size = arg.val_size
 load_checkpoint = None
-label_to_pred = 4
+label_to_pred = dict(zip(['like', 'comment', 'retweet', 'reply'], range(1, 5)))[arg.label]
 save_latest = arg.save_latest
 n_workers = arg.n_workers
 if arg.load_latest:

@@ -19,9 +19,9 @@ def load_data(file_path, queue, offset, stride, cache_size, shuffle=True):
 			lines = list(islice(f, cache_size))
 		if shuffle:
 			permuation = np.random.permutation(len(lines))
-			lines = [lines[i].split('\x01') for i in permuation]
+			lines = [lines[i].strip().split('\x01') for i in permuation]
 		else:
-			lines = [line.split('\x01') for line in lines]
+			lines = [line.strip().split('\x01') for line in lines]
 		for i in range(0, len(lines), batch_size):
 			queue.put(process_mp(lines[i:i + batch_size], None))
 		list(islice(f, (stride - 1) * cache_size))
@@ -86,9 +86,9 @@ class TwitterDataset():
 		self.current_line += len(lines)
 		if self.shuffle:
 			permuation = np.random.permutation(len(lines))
-			lines = [lines[i].split('\x01') for i in permuation]
+			lines = [lines[i].strip().split('\x01') for i in permuation]
 		else:
-			lines = [line.split('\x01') for line in lines]
+			lines = [line.strip().split('\x01') for line in lines]
 		self.data = [(self.transform(process(lines[i:i + batch_size], self.token_embedding_level)))
 					 for i in range(0, len(lines), batch_size)]
 		return True

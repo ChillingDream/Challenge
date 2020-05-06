@@ -333,8 +333,8 @@ def raw2npy(file):
 
 if __name__ == '__main__':
 #data_count(os.path.join(data_dir, 'training.tsv'), os.path.join(data_dir, 'val.tsv'))
-	raw2npy('toy_training.tsv')
-	raw2npy('toy_val.tsv')
+#	raw2npy('toy_training.tsv')
+#	raw2npy('toy_val.tsv')
 #raw2npy('reduced_training.tsv')
 #raw2npy('reduced_val.tsv')
 	exit(0)
