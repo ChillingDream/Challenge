@@ -22,6 +22,7 @@ parser.add_argument("--val_size", default=2000, type=int)
 parser.add_argument("--n_workers", default=4, type=int)
 parser.add_argument("--label", default='like', choices=['retweet', 'reply', 'like', 'comment'])
 parser.add_argument("--save_latest", action='store_true')
+parser.add_argument("--make_prediction", action='store_true')
 load_parser = parser.add_mutually_exclusive_group()
 load_parser.add_argument("--load_latest", action='store_true')
 load_parser.add_argument("--load_best", action='store_true')
@@ -52,6 +53,7 @@ load_checkpoint = None
 label_to_pred = dict(zip(['like', 'comment', 'retweet', 'reply'], range(1, 5)))[arg.label]
 save_latest = arg.save_latest
 n_workers = arg.n_workers
+make_prediction = arg.make_prediction
 if arg.load_latest:
 	load_checkpoint = 'latest'
 if arg.load_best:

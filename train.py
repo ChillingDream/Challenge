@@ -48,6 +48,7 @@ print("Training...")
 time.sleep(0.5)
 iteration = trange(epochs)
 batches_per_epoch = (len(train_data) - 1) // batch_size + 1
+record_interval = 200
 for epoch in iteration:
 	model.train()
 	pred = []
@@ -64,7 +65,7 @@ for epoch in iteration:
 		optimizer.step()
 		del x, y
 
-		if step % 20 == 19:
+		if step % record_interval == record_interval - 1:
 			test_ce, test_prauc, test_rce = test(model, test_data)
 			writer.add_scalars('loss/ce', {'val':test_ce}, step)
 			writer.add_scalars('loss/prauc', {'val':test_prauc}, step)

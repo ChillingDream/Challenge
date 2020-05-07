@@ -212,7 +212,8 @@ def process(entries, token_embedding_level):
 			fng2,
 			engaging_verified,
 			follow], \
-		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)])
+		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)]) if len(entries[0]) > len(
+			   all_features) else None
 
 def process_mp(entries, token_embedding_level):
 	'''
