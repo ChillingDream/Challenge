@@ -33,7 +33,6 @@ if arg.device == "cpu":
 else:
 	os.environ['CUDA_VISIBLE_DEVICES'] = arg.device
 	device = torch.device("cuda:0")
-data_dir = 'data/'
 checkpoints_dir = 'checkpoints'
 model_name = arg.model_name
 log_dir = os.path.join(arg.log_dir, model_name)

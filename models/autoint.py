@@ -42,7 +42,7 @@ class MutiheadAttention(nn.Module):
 		return outputs
 
 class AutoInt(nn.Module):
-	def __init__(self, emb_length, num_units, num_heads, dnn_units=[256, 128]):
+	def __init__(self, emb_length, num_units, num_heads, dnn_units):
 		super().__init__()
 		self.token_emb_layer = nn.EmbeddingBag.from_pretrained(word_embeddings, freeze=True, mode='mean')
 		self.emb_layers = nn.ModuleList([nn.Linear(word_embeddings.size()[1], emb_length, bias=False)] +

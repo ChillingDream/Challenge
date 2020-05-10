@@ -6,6 +6,6 @@ from models.wide_deep import WideDeep
 if arg.model == 'widedeep':
 	model = WideDeep(emb_length=32, hidden_units=[128, 64, 32])
 elif arg.model == 'autoint':
-	model = AutoInt(emb_length=8, num_units=[8, 8, 8], num_heads=[2, 2, 2])
+	model = AutoInt(emb_length=16, num_units=[16, 16, 16], num_heads=[2, 2, 2], dnn_units=[256, 128])
 else:
 	raise Exception('model required')

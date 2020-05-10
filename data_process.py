@@ -32,6 +32,8 @@ def data_count(path, val_path=None):
 	hashtag_count = {}
 	engaged_user_count = {}
 	engaging_user_count = {}
+	user_language = {}
+	engaging_user_media = {}
 	M_fer = 0
 	M_fng = 0
 	N = 0
@@ -44,8 +46,22 @@ def data_count(path, val_path=None):
 			N += len(lines)
 			for line in lines:
 				features = line.split('\x01')
-				language[features[features_to_idx['language']]] = \
-					language.get(features[features_to_idx['language']], len(language))
+				cur_lang = features[features_to_idx['language']]
+				user1 = features[features_to_idx['engaged_with_user_id']]
+				user2 = features[features_to_idx['engaging_user_id']]
+				language[features[features_to_idx['language']]] = language.get(cur_lang, len(language))
+				if user1 not in user_language:
+					user_language[user1] = set()
+				if user2 not in user_language:
+					user_language[user2] = set()
+				user_language[user1].add(cur_lang)
+				user_language[user2].add(cur_lang)
+
+				if user2 not in engaging_user_media:
+					engaging_user_media[user2] = set()
+				for media in features[features_to_idx['present_media']].split():
+					engaging_user_media[user2].add(media)
+
 				for tag in features[features_to_idx['hashtags']].split():
 					hashtag_count[tag] = hashtag_count.get(tag, 0) + 1
 				engaged_user_count[features[features_to_idx['engaged_with_user_id']]] = \
@@ -96,7 +112,8 @@ def data_count(path, val_path=None):
 		f.writelines(['%s %d\n' % (id, count) for id, count in engaging_user_count])
 	for tag, _ in hashtag_count[:480]:
 		hashtag[tag] = hashtag.get(tag, len(hashtag))
-	np.savez('statistic.npz', N=N, hashtag=hashtag, language=language, M_fer=M_fer, M_fng=M_fng)
+	np.savez('statistic.npz', N=N, hashtag=hashtag, language=language, M_fer=M_fer, M_fng=M_fng,
+			 user_language=user_language, engaging_user_media=engaging_user_media)
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
 word_embeddings = bert.embeddings.word_embeddings.weight.data.to(device)
@@ -323,7 +340,7 @@ def raw2npy(file):
 	:param file: the file name without prefix directory
 	'''
 	data = []
-	with open(os.path.join(data_dir, file)) as f:
+	with open(file) as f:
 		lines = f.readlines()
 		lines = [line.split('\x01') for line in lines]
 		stride = 100
@@ -333,17 +350,4 @@ def raw2npy(file):
 #	np.save(os.path.join(data_dir, os.path.splitext(file)[0]), data)
 
 if __name__ == '__main__':
-#data_count(os.path.join(data_dir, 'training.tsv'), os.path.join(data_dir, 'val.tsv'))
-#	raw2npy('toy_training.tsv')
-#	raw2npy('toy_val.tsv')
-#raw2npy('reduced_training.tsv')
-#raw2npy('reduced_val.tsv')
-	exit(0)
-	with open(os.path.join(data_dir, "toy_training.tsv"), encoding="utf-8") as f:
-		lines = f.readlines(100000)
-		entries = [line.split('\x01') for line in lines]
-		data = process(entries, None)
-		print(data[0][0])
-# np.save('data.npy', data)
-# data = np.load('data.npy', allow_pickle=True)
-#print(data)
+	data_count('data/toy_training.tsv')
