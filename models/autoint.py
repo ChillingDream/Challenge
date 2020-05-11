@@ -45,10 +45,12 @@ class AutoInt(nn.Module):
 	def __init__(self, emb_length, num_units, num_heads, dnn_units):
 		super().__init__()
 		self.token_emb_layer = nn.EmbeddingBag.from_pretrained(word_embeddings, freeze=True, mode='mean')
-		self.emb_layers = nn.ModuleList([nn.Linear(word_embeddings.size()[1], emb_length, bias=False)] +
-										[nn.EmbeddingBag(field_dims[i], emb_length, mode='mean') for i in
-										 multihot_idx] +
-										[nn.Embedding(field_dims[i], emb_length) for i in onehot_idx])
+		self.emb_layers = nn.ModuleList([nn.Linear(word_embeddings.size()[1], emb_length, bias=False)])
+		for i in range(1, len(field_dims)):
+			if i in multihot_idx:
+				self.emb_layers.append(nn.EmbeddingBag(field_dims[i], emb_length, mode='mean'))
+			elif i in onehot_idx:
+				self.emb_layers.append(nn.Embedding(field_dims[i], emb_length))
 		self.dnn_layer = None
 		if dnn_units:
 			dnn = [Flatten()]

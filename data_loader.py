@@ -11,6 +11,7 @@ from models.autoint import AutoInt
 def load_data(file_path, queue, offset, stride, cache_size, shuffle=True):
 	f = open(file_path, encoding="utf-8")
 	list(islice(f, offset * cache_size))
+	use_user_info = offset % 2
 	while True:
 		lines = list(islice(f, cache_size))
 		if not lines:
@@ -23,8 +24,9 @@ def load_data(file_path, queue, offset, stride, cache_size, shuffle=True):
 		else:
 			lines = [line.strip().split('\x01') for line in lines]
 		for i in range(0, len(lines), batch_size):
-			queue.put(process_mp(lines[i:i + batch_size], None))
+			queue.put(process_mp(lines[i:i + batch_size], None, use_user_info))
 		list(islice(f, (stride - 1) * cache_size))
+		use_user_info ^= 1
 
 class TwitterDataset():
 

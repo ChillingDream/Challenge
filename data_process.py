@@ -1,6 +1,7 @@
 from itertools import islice
 
 from pytorch_pretrained_bert import BertModel
+from torch import LongTensor
 from tqdm import trange
 
 from config import *
@@ -16,12 +17,14 @@ feature_idx = [features_to_idx['text_tokens'], features_to_idx['hashtags'], feat
 			   features_to_idx['engaged_with_user_follower_count'],
 			   features_to_idx['engaged_with_user_following_count'], features_to_idx['engaged_with_user_is_verified'],
 			   features_to_idx['engaging_user_follower_count'], features_to_idx['engaging_user_following_count'],
-			   features_to_idx['engaging_user_is_verified'], features_to_idx['engagee_follows_engager']]
+			   features_to_idx['engaging_user_is_verified'], features_to_idx['engagee_follows_engager'],
+			   features_to_idx['engaging_user_id']]
 labels_to_idx = {"reply_timestamp": 20, "retweet_timestamp": 21, "retweet_with_comment_timestamp": 22, "like_timestamp": 23};
 follow_intervals = 5
-multihot_idx = [1, 2]
+multihot_idx = [1, 2, 12, 13]
 onehot_idx = [3, 4, 5, 6, 7, 8, 9, 10, 11]
-field_dims = [768, 480, 3, 4, 66, follow_intervals, follow_intervals, 2, follow_intervals, follow_intervals, 2, 2]
+field_dims = [768, 480, 3, 4, 66, follow_intervals, follow_intervals, 2, follow_intervals, follow_intervals, 2, 2, 66,
+			  3]
 
 def data_count(path, val_path=None):
 	'''
@@ -117,14 +120,17 @@ def data_count(path, val_path=None):
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
 word_embeddings = bert.embeddings.word_embeddings.weight.data.to(device)
-all_types = dict(zip(['Retweet', 'Quote', 'Reply', 'TopLevel'], range(4)))
 statistic = np.load('statistic.npz', allow_pickle=True)
+all_type = dict(zip(['Retweet', 'Quote', 'Reply', 'TopLevel'], range(4)))
+all_media = dict(zip(['Photo', 'Video', 'GIF'], range(3)))
 all_hashtag = statistic['hashtag'][()]
 all_language = statistic['language'][()]
+all_user_language = statistic['user_language'][()]
+all_engaging_user_media = statistic['engaging_user_media'][()]
 LM_fer = np.log(statistic['M_fer'] + 1) + 1
 LM_fng = np.log(statistic['M_fng'] + 1) + 1
 
-def process(entries, token_embedding_level):
+def process(entries, token_embedding_level, use_user_info=True):
 	'''
 	process multiple lines including token embedding computing and average pooling, onehot encoding and numerical
 	normalization.
@@ -170,36 +176,36 @@ def process(entries, token_embedding_level):
 			indices.append(cur_tokens)
 			cur_tokens += len(line)
 			sentence_embedding.extend(line)
-		sentence_embedding = [torch.tensor(sentence_embedding).to(device), torch.tensor(indices).to(device)]
+		sentence_embedding = [LongTensor(sentence_embedding).to(device), LongTensor(indices).to(device)]
 	else:
 		raise Exception('wrong token embedding level')
 
 	indices = []  # similar to sentence embedding
 	values = []  # similar to sentence embedding
 	cur = 0
-	for i, tags in enumerate(features[1]):
+	for tags in features[1]:
 		indices.append(cur)
 		tags = tags.split()
 		for tag in tags:
 			if tag in all_hashtag:
 				values.append(all_hashtag[tag])
 				cur += 1
-	hashtags = [torch.tensor(values).to(device), torch.tensor(indices).to(device)]
+	hashtags = [LongTensor(values).to(device), LongTensor(indices).to(device)]
 
 	indices = []
 	values = []
 	cur = 0
-	for i, media in enumerate(features[2]):
+	for media in features[2]:
 		indices.append(cur)
 		media = media.split()
-		for j, m in enumerate(['Photo', 'Video', 'Gif']):
+		for j, m in enumerate(all_media.keys()):
 			if m in media:
 				values.append(j)
 				cur += 1
-	medias = [torch.tensor(values).to(device), torch.tensor(indices).to(device)]
+	medias = [LongTensor(values).to(device), LongTensor(indices).to(device)]
 
-	tweet_types = [torch.tensor([all_types[type] for type in features[3]]).to(device)]
-	languages = [torch.tensor([all_language[language] for language in features[4]]).to(device)]
+	tweet_types = [LongTensor([all_type[type] for type in features[3]]).to(device)]
+	languages = [LongTensor([all_language[language] for language in features[4]]).to(device)]
 
 	fer1 = torch.tensor([int(x) for x in features[5]], dtype=torch.float)
 	fer1 = [((fer1 + 1).log() / LM_fer * follow_intervals).long().to(device)]
@@ -217,6 +223,32 @@ def process(entries, token_embedding_level):
 	engaging_verified = [torch.tensor([int(x == 'true') for x in features[10]]).to(device)]
 	follow = [torch.tensor([int(x == 'true') for x in features[11]]).to(device)]
 
+	if use_user_info:
+		indices = []
+		values = []
+		cur = 0
+		for user in features[12]:
+			indices.append(cur)
+			if user in all_user_language:
+				for lang in all_user_language[user]:
+					values.append(all_language[lang])
+					cur += 1
+		user_languages = [LongTensor(values).to(device), LongTensor(indices).to(device)]
+
+		indices = []
+		values = []
+		cur = 0
+		for user in features[12]:
+			indices.append(cur)
+			if user in all_engaging_user_media:
+				for media in all_engaging_user_media[user]:
+					values.append(all_media[media])
+					cur += 1
+		engaing_user_media = [LongTensor(values).to(device), LongTensor(indices).to(device)]
+	else:
+		user_languages = [LongTensor([]).to(device), LongTensor([0] * batch).to(device)]
+		engaing_user_media = [LongTensor([]).to(device), LongTensor([0] * batch).to(device)]
+
 	return [sentence_embedding,
 			hashtags,
 			medias,
@@ -228,11 +260,13 @@ def process(entries, token_embedding_level):
 			fer2,
 			fng2,
 			engaging_verified,
-			follow], \
+			follow,
+			user_languages,
+			engaing_user_media], \
 		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)]) if len(entries[0]) > len(
 			   all_features) else None
 
-def process_mp(entries, token_embedding_level):
+def process_mp(entries, token_embedding_level, use_user_info):
 	'''
 	the multiprocessing version of the process
 	'''
@@ -254,11 +288,10 @@ def process_mp(entries, token_embedding_level):
 			attention_mask.append([1] * l + [0] * (max_length - l))
 			weight_mask.append(np.array(attention_mask[-1]) / l)
 
-		tokens = torch.tensor(tokens).to(device)
-		segments = torch.ones_like(tokens).to(device)
-		attention_mask = torch.tensor(attention_mask).to(device)
-		weight_mask = torch.tensor(weight_mask, dtype=torch.float32).to(device)
-		bert.to(device)
+		tokens = torch.tensor(tokens)
+		segments = torch.ones_like(tokens)
+		attention_mask = torch.tensor(attention_mask)
+		weight_mask = torch.tensor(weight_mask, dtype=torch.float32)
 		bert.eval()
 		with torch.no_grad():
 			layers, _ = bert(tokens, segments, attention_mask)
@@ -273,7 +306,7 @@ def process_mp(entries, token_embedding_level):
 			indices.append(cur_tokens)
 			cur_tokens += len(line)
 			sentence_embedding.extend(line)
-		sentence_embedding = [torch.tensor(sentence_embedding), torch.tensor(indices)]
+		sentence_embedding = [LongTensor(sentence_embedding), LongTensor(indices)]
 	else:
 		raise Exception('wrong token embedding level')
 
@@ -287,7 +320,7 @@ def process_mp(entries, token_embedding_level):
 			if tag in all_hashtag:
 				values.append(all_hashtag[tag])
 				cur += 1
-	hashtags = [torch.tensor(values), torch.tensor(indices)]
+	hashtags = [LongTensor(values), LongTensor(indices)]
 
 	indices = []
 	values = []
@@ -299,10 +332,10 @@ def process_mp(entries, token_embedding_level):
 			if m in media:
 				values.append(j)
 				cur += 1
-	medias = [torch.tensor(values), torch.tensor(indices)]
+	medias = [LongTensor(values), LongTensor(indices)]
 
-	tweet_types = [torch.tensor([all_types[type] for type in features[3]])]
-	languages = [torch.tensor([all_language[language] for language in features[4]])]
+	tweet_types = [LongTensor([all_type[type] for type in features[3]])]
+	languages = [LongTensor([all_language[language] for language in features[4]])]
 
 	fer1 = torch.tensor([int(x) for x in features[5]], dtype=torch.float)
 	fer1 = [((fer1 + 1).log() / LM_fer * follow_intervals).long()]
@@ -320,6 +353,31 @@ def process_mp(entries, token_embedding_level):
 	engaging_verified = [torch.tensor([int(x == 'true') for x in features[10]])]
 	follow = [torch.tensor([int(x == 'true') for x in features[11]])]
 
+	if use_user_info:
+		indices = []
+		values = []
+		cur = 0
+		for user in features[12]:
+			indices.append(cur)
+			if user in all_user_language:
+				for lang in all_user_language[user]:
+					values.append(all_language[lang])
+					cur += 1
+		user_languages = [LongTensor(values), LongTensor(indices)]
+
+		indices = []
+		values = []
+		cur = 0
+		for user in features[12]:
+			indices.append(cur)
+			if user in all_engaging_user_media:
+				for media in all_engaging_user_media[user]:
+					values.append(all_media[media])
+					cur += 1
+		engaing_user_media = [LongTensor(values), LongTensor(indices)]
+	else:
+		user_languages = [LongTensor([]), LongTensor([0] * batch)]
+		engaing_user_media = [LongTensor([]), LongTensor([0] * batch)]
 	return [sentence_embedding,
 			hashtags,
 			medias,
@@ -331,8 +389,10 @@ def process_mp(entries, token_embedding_level):
 			fer2,
 			fng2,
 			engaging_verified,
-			follow], \
-		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)]).share_memory_()
+			follow,
+			user_languages,
+			engaing_user_media], \
+		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)])
 
 def raw2npy(file):
 	'''
