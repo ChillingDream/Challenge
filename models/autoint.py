@@ -1,9 +1,9 @@
 import torch
-import torch.nn.functional as F
 from torch import nn
 
 from config import device, drop_rate
-from data_process import field_dims, word_embeddings, onehot_idx, multihot_idx
+from data_process import field_dims, word_embeddings, onehot_idx, multihot_idx, max_length
+from transformer import MutiheadAttention, TransformerEncoder
 
 class Flatten(nn.Module):
 	def __init__(self, start_dim=1, end_dim=-1):
@@ -14,38 +14,13 @@ class Flatten(nn.Module):
 	def forward(self, x):
 		return torch.flatten(x, self.start_dim, self.end_dim)
 
-class MutiheadAttention(nn.Module):
-	def __init__(self, num_in, num_out, num_head, use_layer_norm=True, use_dropout=True):
-		super().__init__()
-		self.num_out = num_out
-		self.queries = nn.Linear(num_in, num_out * num_head, bias=False)
-		self.keys = nn.Linear(num_in, num_out * num_head, bias=False)
-		self.values = nn.Linear(num_in, num_out * num_head, bias=False)
-		self.weights_dropout = nn.Dropout(drop_rate) if use_dropout else None
-		self.res_layer = nn.Linear(num_in, num_out * num_head, bias=False)
-		self.layer_norm = nn.LayerNorm([num_out * num_head]) if use_layer_norm else None
-
-	def forward(self, x):
-		batch = x.size()[0]
-		queries = torch.cat(self.queries(x).split(self.num_out, -1), 0)
-		keys = torch.cat(self.keys(x).split(self.num_out, -1), 0)
-		values = torch.cat(self.values(x).split(self.num_out, -1), 0)
-		weights = queries.matmul(keys.permute([0, 2, 1]))  # QK^T
-		weights = F.softmax(weights / self.num_out ** 0.5, -1)
-		if self.weights_dropout:
-			weights = self.weights_dropout(weights)
-		outputs = weights.matmul(values)
-		outputs = torch.cat(outputs.split(batch, 0), 2)
-		outputs = F.relu(outputs + self.res_layer(x))
-		if self.layer_norm:
-			outputs = self.layer_norm(outputs)
-		return outputs
 
 class AutoInt(nn.Module):
 	def __init__(self, emb_length, num_units, num_heads, dnn_units):
 		super().__init__()
-		self.token_emb_layer = nn.EmbeddingBag.from_pretrained(word_embeddings, freeze=True, mode='mean')
-		self.emb_layers = nn.ModuleList([nn.Linear(word_embeddings.size()[1], emb_length, bias=False)])
+		# self.token_emb_layer = nn.EmbeddingBag.from_pretrained(word_embeddings, freeze=True, mode='mean')
+		self.token_emb_layer = TransformerEncoder(max_length, word_embeddings.size()[1])
+		self.emb_layers = nn.ModuleList([nn.Linear(256, emb_length, bias=False)])
 		for i in range(1, len(field_dims)):
 			if i in multihot_idx:
 				self.emb_layers.append(nn.EmbeddingBag(field_dims[i], emb_length, mode='mean'))

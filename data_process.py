@@ -25,6 +25,7 @@ multihot_idx = [1, 2, 12, 13]
 onehot_idx = [3, 4, 5, 6, 7, 8, 9, 10, 11]
 field_dims = [768, 480, 3, 4, 66, follow_intervals, follow_intervals, 2, follow_intervals, follow_intervals, 2, 2, 66,
 			  3]
+max_length = 64
 
 def data_count(path, val_path=None):
 	'''
@@ -148,7 +149,6 @@ def process(entries, token_embedding_level, use_user_info=True):
 	tokens = features[0]
 	tokens = [[int(token) for token in line.split()] for line in tokens]
 	if token_embedding_level == 'sentence':
-		max_length = max([len(line) for line in tokens])
 		attention_mask = []
 		weight_mask = []
 		for line in tokens:
@@ -169,6 +169,7 @@ def process(entries, token_embedding_level, use_user_info=True):
 	elif token_embedding_level == 'word':
 		sentence_embedding = torch.stack([torch.mean(word_embeddings[line], 0) for line in tokens])
 	elif token_embedding_level == None:
+		'''
 		cur_tokens = 0
 		indices = []  # the indices indicating the start of each batch, as nn.EmbeddingBag requires
 		sentence_embedding = []  # the token id of all the batch as a 1-d tensor
@@ -177,6 +178,14 @@ def process(entries, token_embedding_level, use_user_info=True):
 			cur_tokens += len(line)
 			sentence_embedding.extend(line)
 		sentence_embedding = [LongTensor(sentence_embedding).to(device), LongTensor(indices).to(device)]
+		'''
+		sentence_embedding = []
+		for line in tokens:
+			if len(line) >= max_length:
+				sentence_embedding.append(line[:max_length])
+			else:
+				sentence_embedding.append(line + [0] * (max_length - len(line)))
+		sentence_embedding = [torch.tensor(sentence_embedding).to(device)]
 	else:
 		raise Exception('wrong token embedding level')
 
@@ -279,7 +288,6 @@ def process_mp(entries, token_embedding_level, use_user_info):
 	tokens = features[0]
 	tokens = [[int(token) for token in line.split()] for line in tokens]
 	if token_embedding_level == 'sentence':
-		max_length = max([len(line) for line in tokens])
 		attention_mask = []
 		weight_mask = []
 		for line in tokens:
@@ -299,6 +307,7 @@ def process_mp(entries, token_embedding_level, use_user_info):
 	elif token_embedding_level == 'word':
 		sentence_embedding = torch.stack([torch.mean(word_embeddings[line], 0) for line in tokens])
 	elif token_embedding_level == None:
+		'''
 		cur_tokens = 0
 		indices = []
 		sentence_embedding = []
@@ -307,6 +316,14 @@ def process_mp(entries, token_embedding_level, use_user_info):
 			cur_tokens += len(line)
 			sentence_embedding.extend(line)
 		sentence_embedding = [LongTensor(sentence_embedding), LongTensor(indices)]
+		'''
+		sentence_embedding = []
+		for line in tokens:
+			if len(line) >= max_length:
+				sentence_embedding.append(line[:max_length])
+			else:
+				sentence_embedding.append(line + [0] * (max_length - len(line)))
+		sentence_embedding = [torch.tensor(sentence_embedding)]
 	else:
 		raise Exception('wrong token embedding level')
 
