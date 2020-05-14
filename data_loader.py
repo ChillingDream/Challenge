@@ -52,6 +52,7 @@ class TwitterDataset():
 		self.shuffle = shuffle
 		self.token_embedding_level = token_embedding_level
 		self.load_all = False
+		self.user_info_flag = True
 		self.n_workers = n_workers
 		self.processors = []
 		with open(path, encoding='utf-8') as f:
@@ -59,7 +60,7 @@ class TwitterDataset():
 		if self.__len <= cache_size * max([1, n_workers]):
 			self.load_all = True
 		if self.load_all:
-			self._load()
+			self._load(True)
 		elif n_workers > 0:
 			self.queue = torch.multiprocessing.Manager().Queue(100)
 			for i in range(n_workers):
@@ -74,7 +75,7 @@ class TwitterDataset():
 	def __len__(self):
 		return self.__len
 
-	def _load(self):
+	def _load(self, use_user_info):
 		'''
 		load cache_size lines from the last ending
 		:return: whether the file ends
@@ -98,9 +99,10 @@ class TwitterDataset():
 	def __iter__(self):
 		self.index = 0
 		if not self.load_all and self.n_workers == 0:
+			self.user_info_flag ^= 1
 			self.current_line = 0
 			self.file.seek(0)
-			self._load()
+			self._load(self.user_info_flag)
 		return self
 
 	def __next__(self):
@@ -111,7 +113,7 @@ class TwitterDataset():
 					x[i][j] = x[i][j].to(device)
 			return x, y
 		if self.index >= len(self.data):
-			if self.load_all or not self._load():
+			if self.load_all or not self._load(self.user_info_flag):
 				raise StopIteration
 			self.index = 0
 		data = self.data[self.index]

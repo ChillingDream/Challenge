@@ -125,8 +125,8 @@ all_type = dict(zip(['Retweet', 'Quote', 'Reply', 'TopLevel'], range(4)))
 all_media = dict(zip(['Photo', 'Video', 'GIF'], range(3)))
 all_hashtag = statistic['hashtag'][()]
 all_language = statistic['language'][()]
-all_user_language = statistic['user_language'][()]
-all_engaging_user_media = statistic['engaging_user_media'][()]
+all_user_language = statistic['user_language'][()] if 'user_language' in statistic else {}
+all_engaging_user_media = statistic['engaging_user_media'][()] if 'engaging_user_media' in statistic else {}
 LM_fer = np.log(statistic['M_fer'] + 1) + 1
 LM_fng = np.log(statistic['M_fng'] + 1) + 1
 
