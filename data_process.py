@@ -1,17 +1,10 @@
-from itertools import islice
-
 from pytorch_pretrained_bert import BertModel
 from torch import LongTensor
 from tqdm import trange
 
 from config import *
+from data_count import all_features, features_to_idx
 
-all_features = ["text_tokens", "hashtags", "tweet_id", "present_media", "present_links", "present_domains",
-                 "tweet_type","language", "tweet_timestamp", "engaged_with_user_id", "engaged_with_user_follower_count",
-                "engaged_with_user_following_count", "engaged_with_user_is_verified", "engaged_with_user_account_creation",
-                "engaging_user_id", "engaging_user_follower_count", "engaging_user_following_count", "engaging_user_is_verified",
-                "enaging_user_account_creation", "engagee_follows_engager"]
-features_to_idx = dict(zip(all_features, range(len(all_features))))
 feature_idx = [features_to_idx['text_tokens'], features_to_idx['hashtags'], features_to_idx['present_media'],
 			   features_to_idx['tweet_type'], features_to_idx['language'],
 			   features_to_idx['engaged_with_user_follower_count'],
@@ -19,104 +12,12 @@ feature_idx = [features_to_idx['text_tokens'], features_to_idx['hashtags'], feat
 			   features_to_idx['engaging_user_follower_count'], features_to_idx['engaging_user_following_count'],
 			   features_to_idx['engaging_user_is_verified'], features_to_idx['engagee_follows_engager'],
 			   features_to_idx['engaging_user_id']]
-labels_to_idx = {"reply_timestamp": 20, "retweet_timestamp": 21, "retweet_with_comment_timestamp": 22, "like_timestamp": 23};
 follow_intervals = 5
 multihot_idx = [1, 2, 12, 13]
 onehot_idx = [3, 4, 5, 6, 7, 8, 9, 10, 11]
 field_dims = [768, 480, 3, 4, 66, follow_intervals, follow_intervals, 2, follow_intervals, follow_intervals, 2, 2, 66,
 			  3]
 
-def data_count(path, val_path=None):
-	'''
-	collect the statistic of the full data described in the doc.
-	'''
-	language = {}
-	hashtag = {}
-	hashtag_count = {}
-	engaged_user_count = {}
-	engaging_user_count = {}
-	user_language = {}
-	engaging_user_media = {}
-	M_fer = 0
-	M_fng = 0
-	N = 0
-	max_lines = 1000000
-	with open(path, encoding="utf-8") as f:
-		while True:
-			lines = list(islice(f, max_lines))
-			if not lines:
-				break
-			N += len(lines)
-			for line in lines:
-				features = line.split('\x01')
-				cur_lang = features[features_to_idx['language']]
-				user1 = features[features_to_idx['engaged_with_user_id']]
-				user2 = features[features_to_idx['engaging_user_id']]
-				language[features[features_to_idx['language']]] = language.get(cur_lang, len(language))
-				if user1 not in user_language:
-					user_language[user1] = set()
-				if user2 not in user_language:
-					user_language[user2] = set()
-				user_language[user1].add(cur_lang)
-				user_language[user2].add(cur_lang)
-
-				if user2 not in engaging_user_media:
-					engaging_user_media[user2] = set()
-				for media in features[features_to_idx['present_media']].split():
-					engaging_user_media[user2].add(media)
-
-				for tag in features[features_to_idx['hashtags']].split():
-					hashtag_count[tag] = hashtag_count.get(tag, 0) + 1
-				engaged_user_count[features[features_to_idx['engaged_with_user_id']]] = \
-					engaged_user_count.get(features[features_to_idx['engaged_with_user_id']], 0) + 1
-				engaging_user_count[features[features_to_idx['engaging_user_id']]] = \
-					engaging_user_count.get(features[features_to_idx['engaging_user_id']], 0) + 1
-				M_fer = max(M_fer, int(features[features_to_idx['engaged_with_user_follower_count']]))
-				M_fer = max(M_fer, int(features[features_to_idx['engaging_user_follower_count']]))
-				M_fng = max(M_fng, int(features[features_to_idx['engaged_with_user_following_count']]))
-				M_fng = max(M_fng, int(features[features_to_idx['engaging_user_following_count']]))
-			print(N)
-	print(len(language))
-	print(len(hashtag_count))
-
-	if val_path:
-		tag_recall = 0
-		engaged_engaged_recall = 0
-		engaged_engaging_recall = 0
-		engaging_engaged_recall = 0
-		engaging_engaging_recall = 0
-		with open(val_path, encoding='utf-8') as f:
-			lines = f.readlines()
-			for line in lines:
-				features = line.split('\x01')
-				for tag in features[features_to_idx['hashtags']].split():
-					if tag in hashtag_count:
-						tag_recall += 1
-				if features[features_to_idx['engaged_with_user_id']] in engaged_user_count:
-					engaged_engaged_recall += 1
-				if features[features_to_idx['engaged_with_user_id']] in engaging_user_count:
-					engaged_engaging_recall += 1
-				if features[features_to_idx['engaging_user_id']] in engaged_user_count:
-					engaging_engaged_recall += 1
-				if features[features_to_idx['engaging_user_id']] in engaging_user_count:
-					engaging_engaging_recall += 1
-		print(tag_recall)
-		print(engaged_engaged_recall, engaged_engaging_recall)
-		print(engaging_engaged_recall, engaging_engaging_recall)
-
-	hashtag_count = sorted(hashtag_count.items(), key=lambda x:x[1], reverse=True)
-	engaged_user_count = sorted(engaged_user_count.items(), key=lambda x:x[1], reverse=True)
-	engaging_user_count = sorted(engaging_user_count.items(), key=lambda x:x[1], reverse=True)
-	with open('hashtag_count.txt', 'w') as f:
-		f.writelines(['%s %d\n' % (tag, count) for tag, count in hashtag_count])
-	with open('engaged_user_count.txt', 'w') as f:
-		f.writelines(['%s %d\n' % (id, count) for id, count in engaged_user_count])
-	with open('engaging_user_count.txt', 'w') as f:
-		f.writelines(['%s %d\n' % (id, count) for id, count in engaging_user_count])
-	for tag, _ in hashtag_count[:480]:
-		hashtag[tag] = hashtag.get(tag, len(hashtag))
-	np.savez('statistic.npz', N=N, hashtag=hashtag, language=language, M_fer=M_fer, M_fng=M_fng,
-			 user_language=user_language, engaging_user_media=engaging_user_media)
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
 word_embeddings = bert.embeddings.word_embeddings.weight.data.to(device)
@@ -408,6 +309,3 @@ def raw2npy(file):
 			data += process(lines[i:i + stride])
 
 #	np.save(os.path.join(data_dir, os.path.splitext(file)[0]), data)
-
-if __name__ == '__main__':
-	data_count('data/toy_training.tsv')

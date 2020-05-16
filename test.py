@@ -4,8 +4,8 @@ import pandas as pd
 from sklearn.metrics import precision_recall_curve, auc, log_loss
 
 from config import *
+from data_count import all_features
 from data_loader import TwitterDataset
-from data_process import all_features
 from models import model
 
 def compute_prauc(pred, gt):
