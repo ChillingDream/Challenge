@@ -92,7 +92,7 @@ class TwitterDataset():
 			lines = [lines[i].strip().split('\x01') for i in permuation]
 		else:
 			lines = [line.strip().split('\x01') for line in lines]
-		self.data = [(self.transform(process(lines[i:i + batch_size], self.token_embedding_level)))
+		self.data = [(self.transform(process(lines[i:i + batch_size], self.token_embedding_level, use_user_info)))
 					 for i in range(0, len(lines), batch_size)]
 		return True
 

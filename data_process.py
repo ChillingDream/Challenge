@@ -26,8 +26,9 @@ all_type = dict(zip(['Retweet', 'Quote', 'Reply', 'TopLevel'], range(4)))
 all_media = dict(zip(['Photo', 'Video', 'GIF'], range(3)))
 all_hashtag = statistic['hashtag'][()]
 all_language = statistic['language'][()]
-all_user_language = statistic['user_language'][()] if 'user_language' in statistic else {}
-all_engaging_user_media = statistic['engaging_user_media'][()] if 'engaging_user_media' in statistic else {}
+all_user_language = {}  # statistic['user_language'][()] if 'user_language' in statistic else {}
+all_engaging_user_media = {}  # statistic['engaging_user_media'][()] if 'engaging_user_media' in statistic else {}
+tf_idf = statistic['tf_idf']
 LM_fer = np.log(statistic['M_fer'] + 1) + 1
 LM_fng = np.log(statistic['M_fng'] + 1) + 1
 
@@ -75,6 +76,8 @@ def process(entries, token_embedding_level, use_user_info=True):
 		sentence_embedding = []  # the token id of all the batch as a 1-d tensor
 		for line in tokens:
 			indices.append(cur_tokens)
+			line = sorted(line, key=lambda x:tf_idf[x], reverse=True)
+			line = line[:np.clip(len(line) // 10, 1, 20)]
 			cur_tokens += len(line)
 			sentence_embedding.extend(line)
 		sentence_embedding = [LongTensor(sentence_embedding).to(device), LongTensor(indices).to(device)]
@@ -205,6 +208,8 @@ def process_mp(entries, token_embedding_level, use_user_info):
 		sentence_embedding = []
 		for line in tokens:
 			indices.append(cur_tokens)
+			line = sorted(line, key=lambda x:tf_idf[x], reverse=True)
+			line = line[:np.clip(len(line) // 10, 1, 20)]
 			cur_tokens += len(line)
 			sentence_embedding.extend(line)
 		sentence_embedding = [LongTensor(sentence_embedding), LongTensor(indices)]
@@ -309,3 +314,5 @@ def raw2npy(file):
 			data += process(lines[i:i + stride])
 
 #	np.save(os.path.join(data_dir, os.path.splitext(file)[0]), data)
+if __name__ == '__main__':
+	print(word_embeddings.size())
