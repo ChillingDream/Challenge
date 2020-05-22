@@ -5,7 +5,7 @@ import torch
 import torch.multiprocessing
 
 from config import device, batch_size
-from data_process import process, process_mp
+from data_process import process
 from models.autoint import AutoInt
 
 def load_data(file_path, queue, offset, stride, cache_size, shuffle=True):
@@ -24,7 +24,7 @@ def load_data(file_path, queue, offset, stride, cache_size, shuffle=True):
 		else:
 			lines = [line.strip().split('\x01') for line in lines]
 		for i in range(0, len(lines), batch_size):
-			queue.put(process_mp(lines[i:i + batch_size], None, use_user_info))
+			queue.put(process(lines[i:i + batch_size], None, use_user_info))
 		list(islice(f, (stride - 1) * cache_size))
 		use_user_info ^= 1
 
@@ -108,17 +108,17 @@ class TwitterDataset():
 	def __next__(self):
 		if self.n_workers > 0 and not self.load_all:
 			x, y = self.queue.get()
-			for i in range(len(x)):
-				for j in range(len(x[i])):
-					x[i][j] = x[i][j].to(device)
-			return x, y
-		if self.index >= len(self.data):
-			if self.load_all or not self._load(self.user_info_flag):
-				raise StopIteration
-			self.index = 0
-		data = self.data[self.index]
-		self.index += 1
-		return data
+		else:
+			if self.index >= len(self.data):
+				if self.load_all or not self._load(self.user_info_flag):
+					raise StopIteration
+				self.index = 0
+			x, y = self.data[self.index]
+			self.index += 1
+		for i in range(len(x)):
+			for j in range(len(x[i])):
+				x[i][j] = x[i][j].to(device)
+		return x, y
 
 	def close(self):
 		if self.n_workers > 0:
