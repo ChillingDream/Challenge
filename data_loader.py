@@ -24,7 +24,7 @@ def load_data(file_path, queue, offset, stride, cache_size, shuffle=True):
 		else:
 			lines = [line.strip().split('\x01') for line in lines]
 		for i in range(0, len(lines), batch_size):
-			queue.put(process(lines[i:i + batch_size], None, use_user_info))
+			queue.put(process(lines[i:i + batch_size], None, use_user_info ^ (i & 1)))
 		list(islice(f, (stride - 1) * cache_size))
 		use_user_info ^= 1
 

@@ -14,12 +14,12 @@ feature_idx = [features_to_idx['text_tokens'], features_to_idx['hashtags'], feat
 			   features_to_idx['engaging_user_follower_count'], features_to_idx['engaging_user_following_count'],
 			   features_to_idx['engaging_user_is_verified'], features_to_idx['engagee_follows_engager'],
 			   features_to_idx['engaging_user_id'], features_to_idx['engaged_with_user_account_creation'],
-			   features_to_idx['engaging_user_account_creation']]
+			   features_to_idx['tweet_timestamp']]
 follow_intervals = 5
 multihot_idx = [1, 2, 12, 13]
 onehot_idx = [3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15]
 field_dims = [768, 480, 3, 4, 66, follow_intervals, follow_intervals, 2, follow_intervals, follow_intervals, 2, 2, 66,
-			  3, 40, 40]
+			  3, 24]
 
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
@@ -29,8 +29,8 @@ all_type = dict(zip(['Retweet', 'Quote', 'Reply', 'TopLevel'], range(4)))
 all_media = dict(zip(['Photo', 'Video', 'GIF'], range(3)))
 all_hashtag = statistic['hashtag'][()]
 all_language = statistic['language'][()]
-all_user_language = {}  # statistic['user_language'][()] if 'user_language' in statistic else {}
-all_engaging_user_media = {}  # statistic['engaging_user_media'][()] if 'engaging_user_media' in statistic else {}
+all_user_language = statistic['user_language'][()] if 'user_language' in statistic else {}
+all_engaging_user_media = statistic['engaging_user_media'][()] if 'engaging_user_media' in statistic else {}
 LM_fer = np.log(statistic['M_fer'] + 1) + 1
 LM_fng = np.log(statistic['M_fng'] + 1) + 1
 
@@ -41,7 +41,7 @@ def process(entries, token_embedding_level, use_user_info=True):
 	:param entries: the lines to be processed
 	:param token_embedding_level: one of sentence, word and none. sentence means using bert forwarding; work means only
 	using the word embedding; none means feed the token id into the model and make embedding inside the model.
-	:return: (x,y). x is a batch of 12 tensors, each representing a feature. y is a batch of labels
+	:return: (x,y). x is a batch of tensors, each representing a feature. y is a batch of labels
 	'''
 
 	batch = len(entries)
@@ -152,10 +152,7 @@ def process(entries, token_embedding_level, use_user_info=True):
 		user_languages = [LongTensor([]), LongTensor([0] * batch)]
 		engaing_user_media = [LongTensor([]), LongTensor([0] * batch)]
 
-	engaged_user_create_year = [
-		LongTensor([time.localtime(int(timestamp))[0] - 1980 for timestamp in features[13]]).clamp(0, 39)]
-	engaging_user_create_year = [
-		LongTensor([time.localtime(int(timestamp))[0] - 1980 for timestamp in features[14]]).clamp(0, 39)]
+	tweet_time = [LongTensor([time.localtime(int(timestamp))[3] for timestamp in features[13]])]
 
 	return [sentence_embedding,
 			hashtags,
@@ -171,8 +168,7 @@ def process(entries, token_embedding_level, use_user_info=True):
 			follow,
 			user_languages,
 			engaing_user_media,
-			engaged_user_create_year,
-			engaging_user_create_year], \
+			tweet_time], \
 		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)])
 
 def raw2npy(file):
