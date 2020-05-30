@@ -44,10 +44,6 @@ class WideDeep(nn.Module):
 	def loss(self, logits, labels):
 		return self.loss_function(logits, labels.float().to(device))
 
-	@staticmethod
-	def transform(x):
-		return x
-
 if __name__ == '__main__':
 	m = WideDeep(32, [10, 10, 10])
 	for name, param in m.named_parameters():

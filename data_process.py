@@ -1,5 +1,3 @@
-import time
-
 from pytorch_pretrained_bert import BertModel
 from torch import LongTensor
 from tqdm import trange
@@ -13,17 +11,16 @@ feature_idx = [features_to_idx['text_tokens'], features_to_idx['hashtags'], feat
 			   features_to_idx['engaged_with_user_following_count'], features_to_idx['engaged_with_user_is_verified'],
 			   features_to_idx['engaging_user_follower_count'], features_to_idx['engaging_user_following_count'],
 			   features_to_idx['engaging_user_is_verified'], features_to_idx['engagee_follows_engager'],
-			   features_to_idx['engaging_user_id'], features_to_idx['engaged_with_user_account_creation'],
-			   features_to_idx['tweet_timestamp']]
+			   features_to_idx['engaging_user_id'], features_to_idx['engaged_with_user_account_creation']]
 follow_intervals = 5
 multihot_idx = [1, 2, 12, 13]
-onehot_idx = [3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15]
+onehot_idx = [3, 4, 5, 6, 7, 8, 9, 10, 11]
 field_dims = [768, 480, 3, 4, 66, follow_intervals, follow_intervals, 2, follow_intervals, follow_intervals, 2, 2, 66,
-			  3, 24]
+			  3]
 
 
 bert = BertModel.from_pretrained('./bert-base-multilingual-cased')
-word_embeddings = bert.embeddings.word_embeddings.weight.data.to(device)
+word_embeddings = bert.embeddings.word_embeddings.weight.data
 statistic = np.load('statistic.npz', allow_pickle=True)
 all_type = dict(zip(['Retweet', 'Quote', 'Reply', 'TopLevel'], range(4)))
 all_media = dict(zip(['Photo', 'Video', 'GIF'], range(3)))
@@ -45,7 +42,7 @@ def process(entries, token_embedding_level, use_user_info=True):
 	'''
 
 	batch = len(entries)
-	features = [[] for i in range(len(feature_idx))]
+	features = [[] for _ in range(len(feature_idx))]
 	for line in entries:
 		for i in range(len(feature_idx)):
 			features[i].append(line[feature_idx[i]])
@@ -152,8 +149,6 @@ def process(entries, token_embedding_level, use_user_info=True):
 		user_languages = [LongTensor([]), LongTensor([0] * batch)]
 		engaing_user_media = [LongTensor([]), LongTensor([0] * batch)]
 
-	tweet_time = [LongTensor([time.localtime(int(timestamp))[3] for timestamp in features[13]])]
-
 	return [sentence_embedding,
 			hashtags,
 			medias,
@@ -167,8 +162,7 @@ def process(entries, token_embedding_level, use_user_info=True):
 			engaging_verified,
 			follow,
 			user_languages,
-			engaing_user_media,
-			tweet_time], \
+			engaing_user_media], \
 		   torch.tensor([bool(entries[i][-label_to_pred]) for i in range(batch)])
 
 def raw2npy(file):

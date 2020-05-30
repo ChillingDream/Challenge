@@ -4,16 +4,18 @@ import numpy as np
 import torch
 import torch.multiprocessing
 
-from config import device, batch_size
+from config import device, batch_size, val_size
 from data_process import process
 from models.autoint import AutoInt
 
-def load_data(file_path, queue, offset, stride, cache_size, shuffle=True):
+def load_data(file_path, queue, offset, stride, cache_size, shuffle=True, drop_val=True):
 	f = open(file_path, encoding="utf-8")
 	list(islice(f, offset * cache_size))
 	use_user_info = offset % 2
 	while True:
 		lines = list(islice(f, cache_size))
+		if drop_val and len(lines) < cache_size:
+			lines = lines[:-val_size]
 		if not lines:
 			f.seek(0)
 			list(islice(f, offset * cache_size))
@@ -30,12 +32,11 @@ def load_data(file_path, queue, offset, stride, cache_size, shuffle=True):
 
 class TwitterDataset():
 
-	def __init__(self, path, trans_func, max_lines=None, token_embedding_level=None, cache_size=1000000, shuffle=False,
-				 n_workers=0):
+	def __init__(self, path, max_lines=None, token_embedding_level=None, cache_size=1000000, shuffle=False,
+				 drop_val=False, n_workers=0):
 		'''
 		read the data from the disk file
 		:param path: the full path of the file
-		:param trans_func: the transform function provided by model
 		:param max_lines: if set, dataset will only read the first max_lines lines of the file.
 		:param token_embedding_level: the token_embedding_level for process
 		:param cache_size: how many lines will one load read in
@@ -45,13 +46,13 @@ class TwitterDataset():
 		self.data = []
 		self.current_line = 0
 		self.index = 0
-		self.transform = trans_func
 		self.file = open(path, encoding="utf-8")
 		self.max_lines = max_lines
 		self.cache_size = cache_size
 		self.shuffle = shuffle
 		self.token_embedding_level = token_embedding_level
 		self.load_all = False
+		self.drop_val = drop_val
 		self.user_info_flag = True
 		self.n_workers = n_workers
 		self.processors = []
@@ -68,7 +69,9 @@ class TwitterDataset():
 																							 self.queue,
 																							 i,
 																							 n_workers,
-																							 cache_size)))
+																							 cache_size,
+																							 shuffle,
+																							 drop_val)))
 				self.processors[-1].daemon = True
 				self.processors[-1].start()
 
@@ -84,6 +87,8 @@ class TwitterDataset():
 			lines = list(islice(self.file, min([self.cache_size, self.max_lines - self.current_line])))
 		else:
 			lines = list(islice(self.file, self.cache_size))
+			if self.drop_val and len(lines) < self.cache_size:
+				lines = lines[:-val_size]
 		if not lines:
 			return False
 		self.current_line += len(lines)
@@ -92,7 +97,7 @@ class TwitterDataset():
 			lines = [lines[i].strip().split('\x01') for i in permuation]
 		else:
 			lines = [line.strip().split('\x01') for line in lines]
-		self.data = [(self.transform(process(lines[i:i + batch_size], self.token_embedding_level, use_user_info)))
+		self.data = [(process(lines[i:i + batch_size], self.token_embedding_level, use_user_info))
 					 for i in range(0, len(lines), batch_size)]
 		return True
 

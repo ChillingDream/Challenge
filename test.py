@@ -34,7 +34,7 @@ def test(model, dataset=None, compute_metric=True):
 		time.sleep(0.5)
 		print("Loading test data...")
 		time.sleep(0.5)
-		test_loader = TwitterDataset(test_file, model.transform, cache_size=20000000)
+		test_loader = TwitterDataset(test_file, cache_size=20000000)
 	if not dataset:
 		time.sleep(0.5)
 		print("Testing...")

@@ -38,7 +38,7 @@ model_name = arg.model_name
 log_dir = os.path.join(arg.log_dir, model_name)
 if arg.data_name == 'all':
 	train_file = '/home2/swp/data/twitter/training.tsv'
-	test_file = 'data/reduced_val.tsv'
+	test_file = 'data/val.tsv'
 else:
 	train_file = 'data/' + arg.data_name + '_training.tsv'
 	test_file = 'data/' + arg.data_name + '_val.tsv'
