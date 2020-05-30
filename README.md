@@ -19,6 +19,7 @@ python train.py \
 --save_latest
 ```
 ### Prediction
+This is used for submission. Eliminate --make_prediction for evaluation on the validation dataset.
 ```bash
 python test.py --device 0 model_name exp1 --label retweet --data_name all --make_prediction
 
