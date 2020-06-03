@@ -16,12 +16,14 @@ def calc_score(prauc, rce):
 print("Loading training data...")
 time.sleep(0.5)
 if arg.data_name == 'all':
-	train_loader = TwitterDataset(train_file, shuffle=True, cache_size=1000000, n_workers=n_workers, drop_val=True)
+	train_loader = TwitterDataset(train_file, shuffle=True, cache_size=1000000, use_user_info=use_user_info,
+								  n_workers=n_workers, drop_val=True)
 else:
-	train_loader = TwitterDataset(train_file, shuffle=True, cache_size=100000, n_workers=n_workers)
+	train_loader = TwitterDataset(train_file, shuffle=True, cache_size=100000, use_user_info=use_user_info,
+								  n_workers=n_workers)
 time.sleep(0.5)
 print("Loading validation data...")
-test_loader = TwitterDataset(test_file, val_size)
+test_loader = TwitterDataset(test_file, val_size, use_user_info=use_user_info)
 print("%d entries has been loaded" % len(train_loader))
 
 print("Preparing model...")

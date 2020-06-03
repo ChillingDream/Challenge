@@ -8,10 +8,9 @@ from config import device, batch_size, val_size
 from data_process import process
 from models.autoint import AutoInt
 
-def load_data(file_path, queue, offset, stride, cache_size, shuffle=True, drop_val=True):
+def load_data(file_path, queue, offset, stride, cache_size, use_user_info, shuffle=True, drop_val=True):
 	f = open(file_path, encoding="utf-8")
 	list(islice(f, offset * cache_size))
-	use_user_info = offset % 2
 	while True:
 		lines = list(islice(f, cache_size))
 		if drop_val and len(lines) < cache_size:
@@ -26,14 +25,14 @@ def load_data(file_path, queue, offset, stride, cache_size, shuffle=True, drop_v
 		else:
 			lines = [line.strip().split('\x01') for line in lines]
 		for i in range(0, len(lines), batch_size):
-			queue.put(process(lines[i:i + batch_size], None, use_user_info ^ (i & 1)))
+			queue.put(process(lines[i:i + batch_size], None, use_user_info))
 		list(islice(f, (stride - 1) * cache_size))
 		use_user_info ^= 1
 
 class TwitterDataset():
 
-	def __init__(self, path, max_lines=None, token_embedding_level=None, cache_size=1000000, shuffle=False,
-				 drop_val=False, n_workers=0):
+	def __init__(self, path, max_lines=None, token_embedding_level=None, cache_size=1000000, use_user_info=True,
+				 shuffle=False, drop_val=False, n_workers=0):
 		'''
 		read the data from the disk file
 		:param path: the full path of the file
@@ -53,7 +52,7 @@ class TwitterDataset():
 		self.token_embedding_level = token_embedding_level
 		self.load_all = False
 		self.drop_val = drop_val
-		self.user_info_flag = True
+		self.use_user_info = use_user_info
 		self.n_workers = n_workers
 		self.processors = []
 		with open(path, encoding='utf-8') as f:
@@ -104,10 +103,9 @@ class TwitterDataset():
 	def __iter__(self):
 		self.index = 0
 		if not self.load_all and self.n_workers == 0:
-			self.user_info_flag ^= 1
 			self.current_line = 0
 			self.file.seek(0)
-			self._load(self.user_info_flag)
+			self._load(self.use_user_info)
 		return self
 
 	def __next__(self):
@@ -115,7 +113,7 @@ class TwitterDataset():
 			x, y = self.queue.get()
 		else:
 			if self.index >= len(self.data):
-				if self.load_all or not self._load(self.user_info_flag):
+				if self.load_all or not self._load(self.use_user_info):
 					raise StopIteration
 				self.index = 0
 			x, y = self.data[self.index]
