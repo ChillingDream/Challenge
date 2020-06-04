@@ -25,7 +25,7 @@ multihot_idx = [1, 2, 12, 13]
 onehot_idx = [3, 4, 5, 6, 7, 8, 9, 10, 11]
 field_dims = [768, 480, 3, 4, 66, follow_intervals, follow_intervals, 2, follow_intervals, follow_intervals, 2, 2, 66,
 			  3]
-max_length = 64
+max_length = 128
 
 def data_count(path, val_path=None):
 	'''

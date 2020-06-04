@@ -41,7 +41,7 @@ class PositionalEncoder(nn.Module):
 		self.embedding = torch.zeros([maxlen, emb_dim])
 		position = torch.arange(maxlen).unsqueeze(1)
 		div_term = 10000 ** (torch.arange(0, emb_dim, 2, dtype=torch.float32) / emb_dim)
-		term = position / div_term
+		term = position.float() / div_term
 		self.embedding[:, 0::2] = torch.sin(term)
 		self.embedding[:, 1::2] = torch.cos(term)
 		self.embedding = nn.Parameter(self.embedding, requires_grad=False)
@@ -61,7 +61,7 @@ class TransformerEncoder(nn.Module):
 		emb = self.word_embedding(x)
 		emb = self.pos_enc(emb)
 		out = self.att_layer(emb, mask)
-		return torch.sum(out * mask.unsqueeze(2).float(), 1) / mask.sum(1, keepdim=True)
+		return torch.sum(out * mask.unsqueeze(2).float(), 1) / mask.sum(1, keepdim=True).float()
 
 if __name__ == '__main__':
 	p = PositionalEncoder(3, 20)
