@@ -24,6 +24,7 @@ parser.add_argument("--label", default='like', choices=['retweet', 'reply', 'lik
 parser.add_argument("--use_user_info", action='store_true')
 parser.add_argument("--save_latest", action='store_true')
 parser.add_argument("--make_prediction", action='store_true')
+parser.add_argument("--make_average", action='store_true')
 load_parser = parser.add_mutually_exclusive_group()
 load_parser.add_argument("--load_latest", action='store_true')
 load_parser.add_argument("--load_best", action='store_true')
@@ -55,6 +56,7 @@ save_latest = arg.save_latest
 n_workers = arg.n_workers
 use_user_info = arg.use_user_info
 make_prediction = arg.make_prediction
+make_average = arg.make_average
 if arg.load_latest:
 	load_checkpoint = 'latest'
 if arg.load_best:

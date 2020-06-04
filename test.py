@@ -46,10 +46,11 @@ def test(model, dataset=None, compute_metric=True):
 			if compute_metric:
 				gt.extend(y.numpy())
 			pred.extend(model(x).squeeze().cpu().numpy())
+	if make_average:
+		pred = [sum(pred) / len(pred)] * len(pred)
 	if not compute_metric:
 		return pred
 	pred = np.array(pred, dtype=np.float64)
-	pred = np.clip(pred, a_min=1e-15, a_max=1-1e-15)
 	ce = log_loss(gt, pred)
 	prauc = compute_prauc(pred, gt)
 	rce = compute_rce(pred, gt)
