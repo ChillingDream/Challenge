@@ -41,23 +41,22 @@ def data_count(path, val_path=None):
 				user1 = features[features_to_idx['engaged_with_user_id']]
 				user2 = features[features_to_idx['engaging_user_id']]
 				language[features[features_to_idx['language']]] = language.get(cur_lang, len(language))
-				'''
+
 				if user1 not in user_language:
 					user_language[user1] = set()
 				user_language[user1].add(cur_lang)
-				if any(features[-4:]):
-					if user2 not in user_language:
-						user_language[user2] = set()
-					user_language[user2].add(cur_lang)
-					if user2 not in engaging_user_media:
-						engaging_user_media[user2] = set()
-					for media in features[features_to_idx['present_media']].split():
-						engaging_user_media[user2].add(media)
+				if user2 not in user_language:
+					user_language[user2] = set()
+				user_language[user2].add(cur_lang)
+				if user2 not in engaging_user_media:
+					engaging_user_media[user2] = set()
+				for media in features[features_to_idx['present_media']].split():
+					engaging_user_media[user2].add(media)
 
-					for i in range(4):
-						if features[-i - 1]:
-							labels_count[i] += 1
-				'''
+				for i in range(4):
+					if features[-i - 1]:
+						labels_count[i] += 1
+
 				for tag in features[features_to_idx['hashtags']].split():
 					hashtag_count[tag] = hashtag_count.get(tag, 0) + 1
 				M_fer = max(M_fer, int(features[features_to_idx['engaged_with_user_follower_count']]))
@@ -86,10 +85,10 @@ def data_count(path, val_path=None):
 				cur_lang = features[features_to_idx['language']]
 				user1 = features[features_to_idx['engaged_with_user_id']]
 				language[features[features_to_idx['language']]] = language.get(cur_lang, len(language))
-				'''
 				if user1 not in user_language:
 					user_language[user1] = set()
 				user_language[user1].add(cur_lang)
+				'''
 				for tag in features[features_to_idx['hashtags']].split():
 					if tag in hashtag_count:
 						tag_recall += 1
@@ -116,7 +115,8 @@ def data_count(path, val_path=None):
 		f.writelines(['%s %d\n' % (id, count) for id, count in engaging_user_count])
 	for tag, _ in hashtag_count[:480]:
 		hashtag[tag] = hashtag.get(tag, len(hashtag))
-	np.savez('statistic.npz', N=N, hashtag=hashtag, language=language, M_fer=M_fer, M_fng=M_fng)
+	np.savez('statistic.npz', N=N, hashtag=hashtag, language=language, M_fer=M_fer, M_fng=M_fng,
+			 user_language=user_language, engaging_user_media=engaging_user_media)
 
 if __name__ == '__main__':
 	# data_count('/home2/swp/data/twitter/training.tsv', '/home2/swp/data/twitter/val.tsv')

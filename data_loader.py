@@ -27,7 +27,6 @@ def load_data(file_path, queue, offset, stride, cache_size, use_user_info, shuff
 		for i in range(0, len(lines), batch_size):
 			queue.put(process(lines[i:i + batch_size], None, use_user_info))
 		list(islice(f, (stride - 1) * cache_size))
-		use_user_info ^= 1
 
 class TwitterDataset():
 
@@ -60,7 +59,7 @@ class TwitterDataset():
 		if self.__len <= cache_size * max([1, n_workers]):
 			self.load_all = True
 		if self.load_all:
-			self._load(True)
+			self._load(use_user_info)
 		elif n_workers > 0:
 			self.queue = torch.multiprocessing.Manager().Queue(100)
 			for i in range(n_workers):
@@ -69,6 +68,7 @@ class TwitterDataset():
 																							 i,
 																							 n_workers,
 																							 cache_size,
+																							 use_user_info,
 																							 shuffle,
 																							 drop_val)))
 				self.processors[-1].daemon = True

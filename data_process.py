@@ -11,7 +11,7 @@ feature_idx = [features_to_idx['text_tokens'], features_to_idx['hashtags'], feat
 			   features_to_idx['engaged_with_user_following_count'], features_to_idx['engaged_with_user_is_verified'],
 			   features_to_idx['engaging_user_follower_count'], features_to_idx['engaging_user_following_count'],
 			   features_to_idx['engaging_user_is_verified'], features_to_idx['engagee_follows_engager'],
-			   features_to_idx['engaging_user_id'], features_to_idx['engaged_with_user_account_creation']]
+			   features_to_idx['engaging_user_id']]
 follow_intervals = 5
 multihot_idx = [1, 2, 12, 13]
 onehot_idx = [3, 4, 5, 6, 7, 8, 9, 10, 11]
