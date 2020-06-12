@@ -30,7 +30,7 @@ def load_data(file_path, queue, offset, stride, cache_size, use_user_info, shuff
 
 class TwitterDataset():
 
-	def __init__(self, path, max_lines=None, token_embedding_level=None, cache_size=1000000, use_user_info=True,
+	def __init__(self, path, max_lines=None, token_embedding_level=None, cache_size=1000000, use_user_info=False,
 				 shuffle=False, drop_val=False, n_workers=0):
 		'''
 		read the data from the disk file

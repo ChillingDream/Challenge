@@ -12,11 +12,11 @@ parser.add_argument("--device", default="0", type=str)
 parser.add_argument("--log_dir", default="logs", type=str)
 parser.add_argument("--model", choices=['autoint', 'widedeep'])
 parser.add_argument("--model_name", default="exp1", type=str)
-parser.add_argument("--epoch", default=20, type=int)
+parser.add_argument("--epoch", default=10, type=int)
 parser.add_argument("--lr", default=1e-3, type=float)
 parser.add_argument("--weight_decay", default=1e-6, type=float)
 parser.add_argument("--dropout", default=0.5, type=float)
-parser.add_argument("--batch", default=2000, type=int)
+parser.add_argument("--batch", default=8000, type=int)
 parser.add_argument("--data_name", default='reduced', type=str)
 parser.add_argument("--val_size", default=2000, type=int)
 parser.add_argument("--n_workers", default=4, type=int)
@@ -41,6 +41,8 @@ log_dir = os.path.join(arg.log_dir, model_name)
 if arg.data_name == 'all':
 	train_file = '/home2/swp/data/twitter/training.tsv'
 	test_file = 'data/val.tsv'
+elif arg.data_name == 'test':
+	test_file = 'data/competition_test.tsv'
 else:
 	train_file = 'data/' + arg.data_name + '_training.tsv'
 	test_file = 'data/' + arg.data_name + '_val.tsv'

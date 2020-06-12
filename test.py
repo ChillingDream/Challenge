@@ -34,8 +34,7 @@ def test(model, dataset=None, compute_metric=True):
 		time.sleep(0.5)
 		print("Loading test data...")
 		time.sleep(0.5)
-		test_loader = TwitterDataset(test_file, cache_size=20000000)
-	if not dataset:
+		test_loader = TwitterDataset(test_file, cache_size=20000000, use_user_info=use_user_info)
 		time.sleep(0.5)
 		print("Testing...")
 		time.sleep(0.5)
@@ -58,6 +57,8 @@ def test(model, dataset=None, compute_metric=True):
 
 
 if __name__ == '__main__':
+	if not os.path.exists('results'):
+		os.mkdir('results')
 	checkpoint = torch.load(os.path.join(checkpoints_dir, model_name + '_best.pt'))
 	model.load_state_dict(checkpoint['model_state_dict'])
 	model.to(device)
@@ -66,7 +67,7 @@ if __name__ == '__main__':
 		pred = test(model, compute_metric=False)
 		print('prediction finished')
 		pred = pd.concat([data[['tweet_id', 'engaging_user_id']], pd.DataFrame({'prediction':pred})], 1)
-		pred.to_csv(arg.label + '_prediction.csv', header=False, index=False)
+		pred.to_csv(os.path.join('results', arg.label + '_prediction.csv'), header=False, index=False)
 	else:
 		ce, prauc, rce = test(model)
 		print("ce: ", ce)

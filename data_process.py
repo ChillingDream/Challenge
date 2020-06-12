@@ -15,7 +15,7 @@ feature_idx = [features_to_idx['text_tokens'], features_to_idx['hashtags'], feat
 follow_intervals = 5
 multihot_idx = [1, 2, 12, 13]
 onehot_idx = [3, 4, 5, 6, 7, 8, 9, 10, 11]
-field_dims = [768, 480, 3, 4, 66, follow_intervals, follow_intervals, 2, follow_intervals, follow_intervals, 2, 2, 66,
+field_dims = [768, 480, 3, 4, 67, follow_intervals, follow_intervals, 2, follow_intervals, follow_intervals, 2, 2, 66,
 			  3]
 
 
@@ -26,8 +26,9 @@ all_type = dict(zip(['Retweet', 'Quote', 'Reply', 'TopLevel'], range(4)))
 all_media = dict(zip(['Photo', 'Video', 'GIF'], range(3)))
 all_hashtag = statistic['hashtag'][()]
 all_language = statistic['language'][()]
-all_user_language = statistic['user_language'][()] if 'user_language' in statistic else {}
-all_engaging_user_media = statistic['engaging_user_media'][()] if 'engaging_user_media' in statistic else {}
+if use_user_info:
+	all_user_language = statistic['user_language'][()] if 'user_language' in statistic else {}
+	all_engaging_user_media = statistic['engaging_user_media'][()] if 'engaging_user_media' in statistic else {}
 LM_fer = np.log(statistic['M_fer'] + 1) + 1
 LM_fng = np.log(statistic['M_fng'] + 1) + 1
 
@@ -105,7 +106,7 @@ def process(entries, token_embedding_level, use_user_info=True):
 	medias = [LongTensor(values), LongTensor(indices)]
 
 	tweet_types = [LongTensor([all_type[type] for type in features[3]])]
-	languages = [LongTensor([all_language[language] for language in features[4]])]
+	languages = [LongTensor([all_language.get(language, 66) for language in features[4]])]
 
 	fer1 = torch.tensor([int(x) for x in features[5]], dtype=torch.float)
 	fer1 = [((fer1 + 1).log() / LM_fer * follow_intervals).long()]
